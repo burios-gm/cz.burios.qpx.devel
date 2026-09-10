@@ -4,6 +4,7 @@ public interface QLVisitor {
     void visit(QLSelect expr);
     void visit(QLColumn expr);
     void visit(QLTable expr);
+    void visit(QLSchema expr);
     void visit(QLJoin expr);
     void visit(QLWhere expr);
     void visit(QLCondition expr);
