@@ -33,17 +33,15 @@ public final class DSLSelect {
     public static QLFunction function(String name, QLExpr... args) { return fn(name, args); }
     public static QLSubSelect subSelect(QLSelect select) { return new QLSubSelect(select); }
     public static QLExpression expression(QLExpr left, String operator, Object right) {
-        return new QLExpression(left, operator, QLExprs.expr(right));
+        return new QLExpression(left, operator, QLExpr.toExpr(right));
     }
     public static QLBrackets brackets(QLExpr expression) { return new QLBrackets(expression); }
     public static QLCondition condition(QLExpr left, String operator, Object right) {
-        return new QLCondition(left, operator, QLExprs.expr(right));
+        return new QLCondition(left, operator, QLExpr.toExpr(right));
     }
     public static QLWhere where(QLExpr... expressions) { return new QLWhere(expressions); }
     public static QLGroupBy groupBy(QLExpr... expressions) { return new QLGroupBy(expressions); }
-    public static QLOrderBy orderBy(QLExpr expression, String direction) {
-        return new QLOrderBy().add(expression, direction);
-    }
+    public static QLOrderBy orderBy(QLExpr expression, String direction) { return new QLOrderBy().add(expression, direction); }
     public static QLCase caseExpr() { return new QLCase(); }
     public static QLExists exists(QLSelect select) { return new QLExists(select); }
 
