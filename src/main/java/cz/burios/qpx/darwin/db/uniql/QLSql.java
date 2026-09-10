@@ -6,7 +6,7 @@ import java.util.regex.Pattern;
 
 /** Visitor which renders parameterized SQL for SELECT and CRUD statements. */
 public final class QLSql implements QLVisitor {
-    private static final Pattern IDENTIFIER = Pattern.compile("(?:\\*|[A-Za-z_][A-Za-z0-9_$]*(\\.[A-Za-z_][A-Za-z0-9_$]*|\\.\\*)*)");
+    private static final Pattern IDENTIFIER = Pattern.compile("(?:\\*|[A-Za-z_][A-Za-z0-9_$]*(\\.[A-Za-z_][A-Za-z0-9_$]*|\\.[\\*])*)");
     private static final Pattern NAME = Pattern.compile("[A-Za-z_][A-Za-z0-9_$]*");
     private final StringBuilder sql = new StringBuilder();
     private final List<Object> parameters = new ArrayList<>();
@@ -35,7 +35,7 @@ public final class QLSql implements QLVisitor {
     @Override public void visit(QLExpression e){sql.append('(');expr(e.left);sql.append(' ').append(arithmetic(e.operator)).append(' ');expr(e.right);sql.append(')');alias(e.alias);if(e.alias!=null)sql.append(" AS ").append(e.alias);}
     @Override public void visit(QLBrackets e){sql.append('(');expr(e.expression);sql.append(')');alias(e.alias);if(e.alias!=null)sql.append(" AS ").append(e.alias);}
     @Override public void visit(QLSubSelect e){if(e.select==null)throw new IllegalStateException("Subselect requires SELECT");sql.append('(');e.select.accept(this);sql.append(')');alias(e.alias);if(e.alias!=null)sql.append(" AS ").append(e.alias);}
-    @Override public void visit(QLIn e){sql.append('(');expr(e.expression);sql.append(e.negated?" NOT IN (":" IN (");if(e.subSelect!=null)expr(e.subSelect);else for(int i=0;i<e.values.size();i++){if(i>0)sql.append(", ");expr(e.values.get(i));}sql.append("))");}
+    @Override public void visit(QLIn e){sql.append('(');expr(e.expression);sql.append(e.negated?" NOT IN ":" IN ");if(e.subSelect!=null){expr(e.subSelect);}else{if(e.values.isEmpty())throw new IllegalStateException("IN requires values or subselect");sql.append('(');for(int i=0;i<e.values.size();i++){if(i>0)sql.append(", ");expr(e.values.get(i));}sql.append(')');}sql.append(')');}
     @Override public void visit(QLBetween e){sql.append('(');expr(e.expression);sql.append(e.negated?" NOT BETWEEN ":" BETWEEN ");expr(e.lower);sql.append(" AND ");expr(e.upper);sql.append(')');}
     @Override public void visit(QLIsNull e){sql.append('(');expr(e.expression);sql.append(e.negated?" IS NOT NULL)":" IS NULL)");}
     @Override public void visit(QLExists e){sql.append('(').append(e.negated?"NOT EXISTS ":"EXISTS ");expr(e.subSelect);sql.append(')');}
