@@ -10,6 +10,7 @@ public class QLSelect extends QLExpr {
     public List<QLJoin> joins = new ArrayList<>();
     public QLWhere where;
     public QLGroupBy groupBy;
+    public QLExpr having;
     public QLOrderBy orderBy;
     public QLLimit limit;
     public QLOffset offset;
