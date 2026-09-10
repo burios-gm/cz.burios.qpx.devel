@@ -50,9 +50,11 @@ public abstract class QLExpr {
     public QLIsNull isNotNull() { return new QLIsNull(this, true); }
     public QLCondition and(Object x) { return new QLLogical("AND", this, QLExprs.expr(x)); }
     public QLCondition or(Object x) { return new QLLogical("OR", this, QLExprs.expr(x)); }
+    public QLLogical not() { return new QLLogical("NOT", this); }
 
     protected QLExpression binary(String op, Object x) { return new QLExpression(this, op, QLExprs.expr(x)); }
     protected QLCondition condition(String op, Object x) { return new QLCondition(this, op, QLExprs.expr(x)); }
+    public static QLExpr toExpr(Object value) { return QLExprs.expr(value); }
 }
 
 final class QLExprs {
