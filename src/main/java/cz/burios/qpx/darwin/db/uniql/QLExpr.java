@@ -12,6 +12,8 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
     @JsonSubTypes.Type(value = QLWhere.class, name = "where"),
     @JsonSubTypes.Type(value = QLCondition.class, name = "condition"),
     @JsonSubTypes.Type(value = QLValue.class, name = "value"),
+    @JsonSubTypes.Type(value = QLFunction.class, name = "function"),
+    @JsonSubTypes.Type(value = QLSubSelect.class, name = "subSelect"),
     @JsonSubTypes.Type(value = QLGroupBy.class, name = "groupBy"),
     @JsonSubTypes.Type(value = QLOrderBy.class, name = "orderBy"),
     @JsonSubTypes.Type(value = QLLimit.class, name = "limit"),
