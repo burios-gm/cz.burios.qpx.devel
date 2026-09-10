@@ -5,6 +5,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import cz.burios.qpx.darwin.db.DBContext;
 import cz.burios.qpx.darwin.db.uniql.BasicRecord;
 import cz.burios.qpx.darwin.db.uniql.dsl.DSL;
 import jakarta.servlet.http.HttpServletRequest;
@@ -35,7 +36,7 @@ public class ContactController {
 	protected List<BasicRecord> getAllData() {
 		List<BasicRecord> data = new ArrayList<>();
 		try {
-			data = DSL.select("NUMBER", "CODE3", "CODE2", "NAME").from("countries").list(DBContextHolder.getConnection());
+			data = DSL.select("NUMBER", "CODE3", "CODE2", "NAME").from("countries").list(DBContext.getConnection());
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
