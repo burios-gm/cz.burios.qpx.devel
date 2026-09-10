@@ -17,6 +17,9 @@ import java.util.Map;
  * DSL.insertInto("users").columns("name").values("Alice");
  * DSL.update("users").set("active", true).where(DSL.col("id").eq(1));
  * DSL.deleteFrom("users").where(DSL.col("id").eq(1));
+ * DSL.insert(connection, "users", record);
+ * DSL.update(connection, "users", record, "id");
+ * DSL.delete(connection, "users", record, "id");
  * </pre>
  */
 public final class DSL {
@@ -80,6 +83,45 @@ public final class DSL {
     public static Insert insertInto(String table) { return new Insert(table); }
     public static Update update(String table) { return new Update(table); }
     public static Delete deleteFrom(String table) { return new Delete(table); }
+
+    /** Insert a BasicRecord using all entries as column/value pairs. */
+    public static int insert(Connection connection, String table, BasicRecord record) throws SQLException {
+        requireRecord(record);
+        return insertInto(table).row(record).execute(connection);
+    }
+
+    /** Update a BasicRecord by its key column; the key itself is not changed. */
+    public static int update(Connection connection, String table, BasicRecord record, String keyColumn) throws SQLException {
+        requireRecord(record);
+        requireKeyColumn(keyColumn);
+        Object key = record.get(keyColumn);
+        if (key == null) throw new IllegalArgumentException("record key must not be null: " + keyColumn);
+
+        Update update = update(table).where(col(keyColumn).eq(key));
+        for (Map.Entry<String, Object> entry : record.entrySet()) {
+            if (!keyColumn.equals(entry.getKey())) update.set(entry.getKey(), entry.getValue());
+        }
+        return update.execute(connection);
+    }
+
+    /** Delete a BasicRecord by its key column. */
+    public static int delete(Connection connection, String table, BasicRecord record, String keyColumn) throws SQLException {
+        requireRecord(record);
+        requireKeyColumn(keyColumn);
+        Object key = record.get(keyColumn);
+        if (key == null) throw new IllegalArgumentException("record key must not be null: " + keyColumn);
+        return deleteFrom(table).where(col(keyColumn).eq(key)).execute(connection);
+    }
+
+    private static void requireRecord(BasicRecord record) {
+        if (record == null) throw new IllegalArgumentException("record must not be null");
+    }
+
+    private static void requireKeyColumn(String keyColumn) {
+        if (keyColumn == null || keyColumn.isBlank()) {
+            throw new IllegalArgumentException("keyColumn must not be blank");
+        }
+    }
 
     /** Fluent SELECT builder. */
     public static final class Select {
