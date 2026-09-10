@@ -36,8 +36,9 @@ gulp.task('build-js', function() {
 		"src/main/webapp/libs/qpx/src/qpx.treeview.js",
 		"src/main/webapp/libs/qpx/src/qpx.propertygrid.js",
 		"src/main/webapp/libs/qpx/src/qpx.datagrid.js",
+		"src/main/webapp/libs/qpx/src/qpx.form.js",
 		"src/main/webapp/libs/qpx/src/qpx.syntaxeditor.js",
-		
+
 		/*
 		*/
 		"src/main/webapp/libs/qpx/src/qpx.parser.js"

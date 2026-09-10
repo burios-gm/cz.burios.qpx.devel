@@ -259,6 +259,15 @@
 					<span class="card-desc">Pole otvírající popup s libovolným vlastním obsahem (treeview, grid...).</span>
 					<span class="card-path">/devel/test/dropdownbox</span>
 				</a>
+				<a class="card" href="/devel/test/form">
+					<span class="card-icon qpxicon qpxicon-template qpxicon-xl"></span>
+					<span class="card-title">qpForm</span>
+					<span class="card-desc">
+						Formulář ve stylu Webix Form — rows/cols/fieldset strom polí, popisky, validace přes
+						"rules", getValues()/setValues(), skutečný &lt;form&gt; element včetně submitu na server.
+					</span>
+					<span class="card-path">/devel/test/form</span>
+				</a>
 				<a class="card" href="/devel/test/lookup">
 					<span class="card-icon qpxicon qpxicon-lookup qpxicon-xl"></span>
 					<span class="card-title">qpLookup</span>
