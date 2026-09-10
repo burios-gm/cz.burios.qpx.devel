@@ -1,9 +1,9 @@
 package cz.burios.qpx.darwin.db.uniql;
 
-import cz.burios.qpx.darwin.db.uniql.dsl.DSLSelect;
+import cz.burios.qpx.darwin.db.uniql.dsl.DSL;
 import org.junit.jupiter.api.Test;
 
-import static cz.burios.qpx.darwin.db.uniql.dsl.DSLSelect.*;
+import static cz.burios.qpx.darwin.db.uniql.dsl.DSL.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class QLSqlTest {
@@ -66,7 +66,7 @@ class QLSqlTest {
 
     @Test
     void rendersJsonRoundTrip() throws Exception {
-        QLSelect select = DSLSelect.select(col("u.id"))
+        QLSelect select = DSL.select(col("u.id"))
                 .from(table("users").as("u"))
                 .where(col("u.active").eq(true))
                 .build();
