@@ -2,9 +2,9 @@ package cz.burios.qpx.darwin.db.uniql.dsl;
 
 import cz.burios.qpx.darwin.db.uniql.*;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.PreparedStatement;
 import java.util.Arrays;
 import java.util.List;
 
@@ -19,7 +19,7 @@ public final class DSLSelect {
     }
     public static Builder select(String... columnNames) {
         Builder b = new Builder();
-        if (columnNames != null) for (String name : columnNames) b.select.columns.add(column(name));
+        if (columnNames != null) for (String name : columnNames) b.select.columns.add(col(name));
         return b;
     }
     public static Builder select() { return new Builder(); }
@@ -32,14 +32,20 @@ public final class DSLSelect {
     public static QLFunction fn(String name, QLExpr... args) { return new QLFunction(name, args); }
     public static QLFunction function(String name, QLExpr... args) { return fn(name, args); }
     public static QLSubSelect subSelect(QLSelect select) { return new QLSubSelect(select); }
-    public static QLCondition condition(QLExpr left, String operator, QLExpr right) { return new QLCondition(left, operator, right); }
+    public static QLExpression expression(QLExpr left, String operator, Object right) {
+        return new QLExpression(left, operator, QLExprs.expr(right));
+    }
+    public static QLBrackets brackets(QLExpr expression) { return new QLBrackets(expression); }
+    public static QLCondition condition(QLExpr left, String operator, Object right) {
+        return new QLCondition(left, operator, QLExprs.expr(right));
+    }
     public static QLWhere where(QLExpr... expressions) { return new QLWhere(expressions); }
     public static QLGroupBy groupBy(QLExpr... expressions) { return new QLGroupBy(expressions); }
     public static QLOrderBy orderBy(QLExpr expression, String direction) {
-        QLOrderBy order = new QLOrderBy();
-        order.items.add(new QLOrderBy.Item(expression, direction));
-        return order;
+        return new QLOrderBy().add(expression, direction);
     }
+    public static QLCase caseExpr() { return new QLCase(); }
+    public static QLExists exists(QLSelect select) { return new QLExists(select); }
 
     public static QLCondition eq(QLExpr left, Object right) { return left.eq(right); }
     public static QLCondition ne(QLExpr left, Object right) { return left.ne(right); }
@@ -57,14 +63,17 @@ public final class DSLSelect {
         public Builder distinct() { select.distinct = true; return this; }
         public Builder from(QLExpr source) { select.from = source; return this; }
         public Builder from(String tableName) { return from(table(tableName)); }
-        public Builder join(QLExpr source, QLCondition on) { return join("INNER", source, on); }
-        public Builder join(String type, QLExpr source, QLCondition on) { select.joins.add(new QLJoin(type, source, on)); return this; }
-        public Builder leftJoin(QLExpr source, QLCondition on) { return join("LEFT", source, on); }
-        public Builder rightJoin(QLExpr source, QLCondition on) { return join("RIGHT", source, on); }
+        public Builder join(QLExpr source, QLExpr on) { return join("INNER", source, on); }
+        public Builder join(String type, QLExpr source, QLExpr on) { select.joins.add(new QLJoin(type, source, on)); return this; }
+        public Builder leftJoin(QLExpr source, QLExpr on) { return join("LEFT", source, on); }
+        public Builder rightJoin(QLExpr source, QLExpr on) { return join("RIGHT", source, on); }
+        public Builder fullJoin(QLExpr source, QLExpr on) { return join("FULL", source, on); }
+        public Builder crossJoin(QLExpr source) { return join("CROSS", source, null); }
         public Builder where(QLExpr expression) { if (select.where == null) select.where = new QLWhere(); select.where.add(expression); return this; }
         public Builder and(QLExpr expression) { return where(expression); }
         public Builder groupBy(QLExpr... expressions) { if (select.groupBy == null) select.groupBy = new QLGroupBy(); if (expressions != null) select.groupBy.expressions.addAll(Arrays.asList(expressions)); return this; }
-        public Builder orderBy(QLExpr expression, String direction) { if (select.orderBy == null) select.orderBy = new QLOrderBy(); select.orderBy.items.add(new QLOrderBy.Item(expression, direction)); return this; }
+        public Builder having(QLExpr expression) { select.having = expression; return this; }
+        public Builder orderBy(QLExpr expression, String direction) { if (select.orderBy == null) select.orderBy = new QLOrderBy(); select.orderBy.add(expression, direction); return this; }
         public Builder orderByAsc(QLExpr expression) { return orderBy(expression, "ASC"); }
         public Builder orderByDesc(QLExpr expression) { return orderBy(expression, "DESC"); }
         public Builder limit(int value) { select.limit = new QLLimit(value); return this; }
