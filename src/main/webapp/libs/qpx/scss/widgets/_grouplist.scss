@@ -1,0 +1,207 @@
+// =====================================================================
+// qpx - widgets/_grouplist.scss
+// qpGroupList - seznam s položkami rozdělenými do skupin (Webix
+// GroupList styl): "lepivá" záhlaví skupin při scrollování (čistě CSS
+// position: sticky, žádný JS listener na scroll), volitelný boční
+// rychlý index a single/multi výběr položek.
+// =====================================================================
+
+@use "../base/variables" as *;
+
+.qpx-grouplist {
+    position: relative;
+    display: flex;
+    width: 100%;
+    height: 260px; // výchozí; přepisuje se cfg.height nebo inline stylem kontejneru
+    border: 1px solid var(--qpx-border, #d3d9df);
+    border-radius: $qpx-radius-md;
+    background: var(--qpx-bg, #ffffff);
+    overflow: hidden;
+    font-family: $qpx-font-family;
+    font-size: $qpx-font-size;
+
+    &.qpx-state-disabled {
+        @include qpx-disabled-state;
+    }
+}
+
+// -----------------------------------------------------------------
+// scrollovatelná oblast se seznamem (záhlaví + položky za sebou)
+// -----------------------------------------------------------------
+.qpx-grouplist-scroller {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-y: auto;
+    outline: none;
+
+    &:focus-visible {
+        box-shadow: 0 0 0 2px var(--qpx-accent, #337ab7) inset;
+    }
+
+    scrollbar-width: thin;
+    scrollbar-color: var(--qpx-border, #d3d9df) transparent;
+}
+.qpx-grouplist-scroller::-webkit-scrollbar {
+    width: 8px;
+}
+.qpx-grouplist-scroller::-webkit-scrollbar-track {
+    background: transparent;
+}
+.qpx-grouplist-scroller::-webkit-scrollbar-thumb {
+    background: var(--qpx-border, #d3d9df);
+    border-radius: 4px;
+}
+.qpx-grouplist-scroller::-webkit-scrollbar-thumb:hover {
+    background: var(--qpx-accent, #337ab7);
+}
+
+// -----------------------------------------------------------------
+// záhlaví skupiny - "lepí" se nahoře scrolleru (position: sticky)
+// -----------------------------------------------------------------
+.qpx-grouplist-group-header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    padding: 6px $qpx-gap-md;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--qpx-text-muted, #767676);
+    background: var(--qpx-surface, #f8f9fb);
+    border-bottom: 1px solid var(--qpx-border, #d3d9df);
+    border-top: 1px solid var(--qpx-border, #d3d9df);
+
+    &:first-child {
+        border-top: 0;
+    }
+}
+.qpx-grouplist-no-sticky .qpx-grouplist-group-header {
+    position: static;
+}
+
+// -----------------------------------------------------------------
+// položka
+// -----------------------------------------------------------------
+.qpx-grouplist-item {
+    display: flex;
+    align-items: center;
+    gap: $qpx-gap-sm;
+    padding: 8px $qpx-gap-md;
+    color: var(--qpx-text, #333333);
+    cursor: pointer;
+    border-bottom: 1px solid transparent;
+    transition: background-color $qpx-transition, color $qpx-transition;
+
+    &:hover {
+        background: var(--qpx-hover, #eceff1);
+    }
+
+    &.qpx-state-selected {
+        background: var(--qpx-selected, #e3f0fb);
+        color: var(--qpx-accent, #337ab7);
+        font-weight: 600;
+    }
+
+    &.qpx-state-disabled {
+        @include qpx-disabled-state;
+        cursor: default;
+
+        &:hover {
+            background: none;
+        }
+    }
+}
+
+.qpx-grouplist-item-icon {
+    flex: 0 0 auto;
+    width: 16px;
+    text-align: center;
+    color: inherit;
+}
+
+.qpx-grouplist-item-text {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+// položka, která má v drill-down módu potomky ("otevírá" další úroveň)
+.qpx-grouplist-item-drill {
+    flex: 0 0 auto;
+    margin-left: $qpx-gap-sm;
+    color: var(--qpx-text-muted, #767676);
+    font-size: 12px;
+}
+.qpx-grouplist-item-drillable:hover .qpx-grouplist-item-drill {
+    color: var(--qpx-accent, #337ab7);
+}
+
+// -----------------------------------------------------------------
+// řádek "Zpět" (drill-down) - vždy jako první, "lepí" se nahoře stejně
+// jako záhlaví skupiny
+// -----------------------------------------------------------------
+.qpx-grouplist-back {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: $qpx-gap-sm;
+    padding: 8px $qpx-gap-md;
+    font-weight: 600;
+    color: var(--qpx-accent, #337ab7);
+    background: var(--qpx-surface, #f8f9fb);
+    border-bottom: 1px solid var(--qpx-border, #d3d9df);
+    cursor: pointer;
+    transition: background-color $qpx-transition;
+
+    @include qpx-focus-ring;
+
+    &:hover {
+        background: var(--qpx-hover, #eceff1);
+    }
+}
+.qpx-grouplist-no-sticky .qpx-grouplist-back {
+    position: static;
+}
+
+// -----------------------------------------------------------------
+// boční rychlý index (A, B, C, ...) pro skok na skupinu
+// -----------------------------------------------------------------
+.qpx-grouplist-index {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    padding: 4px 2px;
+    border-left: 1px solid var(--qpx-border, #d3d9df);
+    background: var(--qpx-surface, #f8f9fb);
+}
+
+.qpx-grouplist-index-item {
+    display: block;
+    width: 18px;
+    padding: 1px 0;
+    border: 0;
+    border-radius: 3px;
+    background: none;
+    font: inherit;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--qpx-text-muted, #767676);
+    cursor: pointer;
+    transition: color $qpx-transition, background-color $qpx-transition;
+
+    @include qpx-focus-ring;
+
+    &:hover {
+        background: var(--qpx-hover, #eceff1);
+        color: var(--qpx-accent, #337ab7);
+    }
+}

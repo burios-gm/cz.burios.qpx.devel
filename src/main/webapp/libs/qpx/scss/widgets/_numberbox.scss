@@ -1,0 +1,135 @@
+// =====================================================================
+// qpx - widgets/_numberbox.scss
+// Vzhled qpNumberBox - vychází z DevExtreme Generic Light/Dark
+// dxNumberBox (textové pole + oddělený sloupec se spin tlačítky ▲▼).
+// Sladěno vzhledově s qpTextBox / qpSelectBox. Barvy jdou přes CSS
+// proměnné (--qpx-*) definované v scss/themes/_light.scss a _dark.scss.
+// =====================================================================
+
+@use "../base/variables" as *;
+
+.qpx-numberbox {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+    min-height: 34px;
+    font-size: $qpx-font-size;
+    border-radius: $qpx-radius;
+    background: var(--qpx-bg, #fff);
+    color: var(--qpx-text, #333);
+    transition: border-color $qpx-transition, box-shadow $qpx-transition, background $qpx-transition;
+    outline: none;
+
+    &.qpx-hidden { display: none; }
+
+    &:focus-within {
+        box-shadow: 0 0 0 2px var(--qpx-accent, #337ab7) inset;
+    }
+
+    // --- stylingMode -----------------------------------------------
+    &.qpx-numberbox-mode-outlined {
+        border: 1px solid var(--qpx-border, #ccc);
+        &:hover { border-color: var(--qpx-accent, #337ab7); }
+    }
+
+    &.qpx-numberbox-mode-filled {
+        border: 1px solid transparent;
+        background: var(--qpx-surface, #f0f0f0);
+        &:hover { background: var(--qpx-hover, #e6e6e6); }
+
+        .qpx-numberbox-spins { border-left-color: var(--qpx-border, #ccc); }
+    }
+
+    &.qpx-numberbox-mode-underlined {
+        border: none;
+        border-bottom: 1px solid var(--qpx-border, #ccc);
+        border-radius: 0;
+        background: transparent;
+        &:hover { border-bottom-color: var(--qpx-accent, #337ab7); }
+
+        .qpx-numberbox-spins { border-left-color: transparent; }
+    }
+}
+
+.qpx-numberbox-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: inherit;
+    font-size: inherit;
+    font-family: inherit;
+    padding: 4px 6px;
+
+    &::placeholder {
+        color: var(--qpx-text-muted, #767676);
+    }
+
+    &[readonly] {
+        cursor: default;
+    }
+}
+
+.qpx-numberbox-clear {
+    flex: 0 0 auto;
+    align-self: center;
+    cursor: pointer;
+    color: var(--qpx-text-muted, #767676);
+    line-height: 1;
+    padding: 2px 4px;
+    user-select: none;
+
+    &:hover {
+        color: var(--qpx-text, #333);
+    }
+}
+
+// --- spin tlačítka ▲▼ ---------------------------------------------------
+.qpx-numberbox-spins {
+    display: none;
+    flex: 0 0 auto;
+    flex-direction: column;
+    width: 20px;
+    border-left: 1px solid var(--qpx-border, #ccc);
+}
+
+.qpx-numberbox.qpx-numberbox-spins-visible .qpx-numberbox-spins {
+    display: flex;
+}
+
+.qpx-numberbox-spin {
+    flex: 1 1 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 9px;
+    line-height: 1;
+    color: var(--qpx-text-muted, #767676);
+    user-select: none;
+
+    &:hover {
+        color: var(--qpx-text, #333);
+        background: var(--qpx-hover, #eceff1);
+    }
+}
+
+.qpx-numberbox-spin-up {
+    border-bottom: 1px solid var(--qpx-border, #ccc);
+    border-top-right-radius: $qpx-radius;
+}
+
+.qpx-numberbox-spin-down {
+    border-bottom-right-radius: $qpx-radius;
+}
+
+// --- stavy disabled / readonly ----------------------------------------
+.qpx-numberbox.qpx-state-disabled {
+    @include qpx-disabled-state;
+}
+
+.qpx-numberbox.qpx-state-readonly {
+    .qpx-numberbox-input { cursor: default; }
+    .qpx-numberbox-spins { display: none; }
+}

@@ -1,0 +1,124 @@
+// =====================================================================
+// qpx - widgets/_treeview.scss
+// Styly pro komponentu "treeview" (qpTreeView).
+//
+// Stejně jako ostatní widgety (viz widgets/_button.scss,
+// widgets/_popup-list.scss) NEobsahuje samostatné bloky pro
+// .qpx-theme-light / .qpx-theme-dark - barvy jdou
+// přes CSS custom properties (--qpx-*) definované v
+// scss/themes/_light.scss a scss/themes/_dark.scss. Díky tomu se do
+// každého tématového buildu (light.scss / dark.scss) propíšou jen
+// hodnoty patřící danému tématu, aniž by bylo nutné pravidla
+// duplikovat.
+// =====================================================================
+
+@use "../base/variables" as *;
+
+.qpx-treeview {
+    font-family: "Segoe UI", sans-serif;
+    font-size: 14px;
+    color: var(--qpx-text, #333333);
+}
+
+.qpx-treeview ul {
+    list-style: none;
+    margin: 0;
+    padding-left: 20px;
+}
+
+.qpx-tree-item {
+    margin: 2px 0;
+}
+
+.qpx-tree-row {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    padding: 3px 4px;
+    border-radius: 3px;
+}
+
+.qpx-tree-row:hover {
+    background: var(--qpx-hover, #eceff1);
+}
+
+.qpx-tree-toggle {
+    width: 16px;
+    text-align: center;
+    margin-right: 4px;
+    color: var(--qpx-text-muted, #767676);
+}
+
+.qpx-tree-toggle-empty {
+    opacity: 0;
+}
+
+/* Checkbox – přesné odsazení 6px, perfektní zarovnání */
+.qpx-tree-checkbox {
+    margin-right: 6px !important;
+    margin-left: 0;
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    position: relative;
+    top: 0;
+}
+
+/* Hover checkboxu - na světlém pozadí ho chceme ztmavit, na tmavém
+   zesvětlit, proto je i samotný filtr součástí theme proměnných
+   (viz --qpx-checkbox-hover-filter v themes/_light.scss a _dark.scss) */
+.qpx-tree-checkbox:hover:not(:disabled) {
+    filter: var(--qpx-checkbox-hover-filter, brightness(0.9));
+}
+
+/* Checkbox disabled */
+.qpx-tree-checkbox:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+/* Indeterminate checkbox – DevExtreme-like, barva podle akcentu tématu */
+.qpx-tree-checkbox:indeterminate {
+    background-color: var(--qpx-accent, #337ab7);
+    border-color: var(--qpx-accent, #337ab7);
+}
+
+.qpx-tree-icon {
+    margin-right: 6px;
+}
+
+.qpx-tree-text {
+    flex: 1;
+}
+
+.qpx-tree-item.qpx-state-selected > .qpx-tree-row {
+    background: var(--qpx-selected, #e3f0fb);
+    color: var(--qpx-accent, #337ab7);
+}
+
+.qpx-tree-item.qpx-state-disabled {
+    @include qpx-disabled-state;
+}
+
+/* Drag & Drop vizuální stavy */
+
+.qpx-tree-dragging > .qpx-tree-row {
+    opacity: 0.4;
+}
+
+.qpx-tree-drop-target > .qpx-tree-row {
+    background: var(--qpx-hover, #eceff1);
+}
+
+.qpx-tree-drop-above > .qpx-tree-row {
+    border-top: 2px solid var(--qpx-accent, #337ab7);
+}
+
+.qpx-tree-drop-below > .qpx-tree-row {
+    border-bottom: 2px solid var(--qpx-accent, #337ab7);
+}
+
+.qpx-tree-drop-inside > .qpx-tree-row {
+    background: var(--qpx-selected, #e3f0fb);
+}

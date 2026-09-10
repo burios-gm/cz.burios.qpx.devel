@@ -1,0 +1,309 @@
+// =====================================================================
+// qpx - widgets/_colorpicker.scss
+// Styly pro komponentu "qpColorPicker" (qpx.colorpicker.js).
+// Barvy jdou přes CSS custom properties --qpx-* (viz themes/_light.scss,
+// themes/_dark.scss), rozměry/mezery přes sdílené $qpx-* proměnné
+// z base/variables (stejná konvence jako widgets/_selectbox.scss).
+// Vzhled pole + popup vychází z DevExtreme light/dark
+// (dxColorBox); paleta barev navíc doplňuje styl Kendo UI ColorPicker /
+// Google Sheets (mřížka vzorků + odkaz "Vlastní barva…").
+// =====================================================================
+
+@use "sass:math";
+@use "../base/variables" as *;
+
+// šachovnicový podklad pro průhlednost (alfa kanál / "bez barvy")
+@mixin qpx-checker-bg($size: 8px) {
+    background-image:
+        linear-gradient(45deg, #ccc 25%, transparent 25%),
+        linear-gradient(-45deg, #ccc 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #ccc 75%),
+        linear-gradient(-45deg, transparent 75%, #ccc 75%);
+    background-size: $size $size;
+    background-position: 0 0, 0 math.div($size, 2), math.div($size, 2) math.div(-$size, 2), math.div(-$size, 2) 0;
+}
+
+// =====================================================================
+// Pole (field)
+// =====================================================================
+.qpx-colorpicker {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: $qpx-gap-sm;
+    min-height: 34px;
+    padding: 4px 6px;
+    font-size: $qpx-font-size;
+    border-radius: $qpx-radius;
+    cursor: pointer;
+    background: var(--qpx-bg, #fff);
+    color: var(--qpx-text, #333);
+    transition: border-color $qpx-transition, box-shadow $qpx-transition;
+
+    @include qpx-focus-ring;
+
+    &.qpx-hidden { display: none; }
+}
+
+.qpx-colorpicker.qpx-colorpicker-mode-outlined {
+    border: 1px solid var(--qpx-border, #ccc);
+    &:hover { border-color: var(--qpx-accent, #337ab7); }
+}
+.qpx-colorpicker.qpx-colorpicker-mode-filled {
+    border: 1px solid transparent;
+    background: var(--qpx-surface, #f0f0f0);
+    &:hover { background: var(--qpx-hover, #e6e6e6); }
+}
+.qpx-colorpicker.qpx-colorpicker-mode-underlined {
+    border: none;
+    border-bottom: 1px solid var(--qpx-border, #ccc);
+    border-radius: 0;
+    background: transparent;
+    &:hover { border-bottom-color: var(--qpx-accent, #337ab7); }
+}
+
+.qpx-colorpicker-swatch {
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+    border-radius: $qpx-radius-sm;
+    border: 1px solid var(--qpx-border, #ccc);
+    background-color: #337ab7;
+
+    &.qpx-colorpicker-swatch-empty {
+        @include qpx-checker-bg(6px);
+        background-color: transparent;
+        position: relative;
+
+        &::after {
+            content: "";
+            position: absolute;
+            left: 1px; right: 1px; top: 50%;
+            border-top: 1px solid var(--qpx-danger, #d9534f);
+            transform: rotate(-45deg);
+        }
+    }
+}
+
+.qpx-colorpicker-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: inherit;
+    font-size: inherit;
+    font-family: inherit;
+    padding: 2px 2px;
+    cursor: text;
+}
+
+.qpx-colorpicker-clear,
+.qpx-colorpicker-arrow {
+    flex: 0 0 auto;
+    cursor: pointer;
+    color: var(--qpx-text-muted, #767676);
+    line-height: 1;
+    padding: 2px 4px;
+    user-select: none;
+}
+.qpx-colorpicker-clear:hover,
+.qpx-colorpicker-arrow:hover { color: var(--qpx-text, #333); }
+
+.qpx-colorpicker[aria-expanded="true"] .qpx-colorpicker-arrow { transform: rotate(180deg); }
+
+// =====================================================================
+// Popup (anchored pod polem — stejná pozice jako qpSelectBox/qpTagBox)
+// =====================================================================
+.qpx-colorpicker-popup {
+    @include qpx-popup-surface;
+    width: 240px;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+// -- paleta ---------------------------------------------------------------
+.qpx-colorpicker-palette-grid {
+    display: grid;
+    gap: 4px;
+}
+
+.qpx-colorpicker-swatch-cell {
+    aspect-ratio: 1 / 1;
+    border-radius: $qpx-radius-sm;
+    border: 1px solid var(--qpx-border, #ccc);
+    cursor: pointer;
+    box-sizing: border-box;
+    transition: transform $qpx-transition;
+
+    &:hover { transform: scale(1.12); }
+
+    &.qpx-state-selected {
+        box-shadow: 0 0 0 2px var(--qpx-accent, #337ab7);
+        border-color: var(--qpx-accent, #337ab7);
+    }
+}
+
+.qpx-colorpicker-swatch-none {
+    @include qpx-checker-bg(5px);
+    position: relative;
+
+    &::after {
+        content: "";
+        position: absolute;
+        left: 1px; right: 1px; top: 50%;
+        border-top: 1px solid var(--qpx-danger, #d9534f);
+        transform: rotate(-45deg);
+    }
+}
+
+.qpx-colorpicker-custom-link,
+.qpx-colorpicker-back-link {
+    display: block;
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--qpx-accent, #337ab7);
+    text-decoration: none;
+    cursor: pointer;
+
+    &:hover { text-decoration: underline; }
+}
+.qpx-colorpicker-back-link { margin-top: 0; margin-bottom: 10px; }
+
+// -- gradient (HSV) editor — vzhled blízký dxColorBox --------------------
+.qpx-colorpicker-gradient-view {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.qpx-colorpicker-sv-area {
+    position: relative;
+    width: 100%;
+    height: 140px;
+    border-radius: $qpx-radius-sm;
+    cursor: crosshair;
+    user-select: none;
+}
+
+.qpx-colorpicker-sv-thumb {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    margin: -6px 0 0 -6px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, .4), inset 0 0 1px rgba(0, 0, 0, .4);
+    pointer-events: none;
+}
+
+.qpx-colorpicker-hue-slider,
+.qpx-colorpicker-alpha-slider {
+    position: relative;
+    width: 100%;
+    height: 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.qpx-colorpicker-hue-slider {
+    background-image: linear-gradient(to right,
+        #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%);
+}
+
+.qpx-colorpicker-alpha-slider {
+    @include qpx-checker-bg(8px);
+}
+
+.qpx-colorpicker-alpha-gradient {
+    position: absolute;
+    inset: 0;
+    border-radius: 6px;
+}
+
+.qpx-colorpicker-hue-thumb,
+.qpx-colorpicker-alpha-thumb {
+    position: absolute;
+    top: 50%;
+    width: 14px;
+    height: 14px;
+    margin: -7px 0 0 -7px;
+    border-radius: 50%;
+    background: #fff;
+    border: 1px solid var(--qpx-border, #ccc);
+    box-shadow: 0 1px 3px var(--qpx-shadow, rgba(0, 0, 0, .3));
+    pointer-events: none;
+}
+
+.qpx-colorpicker-preview-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.qpx-colorpicker-preview-swatch {
+    flex: 0 0 auto;
+    width: 28px;
+    height: 28px;
+    border-radius: $qpx-radius-sm;
+    border: 1px solid var(--qpx-border, #ccc);
+    @include qpx-checker-bg(6px);
+    background-blend-mode: normal;
+}
+
+.qpx-colorpicker-hex-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    box-sizing: border-box;
+    border: 1px solid var(--qpx-border, #ccc);
+    border-radius: $qpx-radius-sm;
+    padding: 5px 7px;
+    font-size: inherit;
+    font-family: inherit;
+    color: inherit;
+    background: var(--qpx-bg, #fff);
+    outline: none;
+
+    &:focus { border-color: var(--qpx-accent, #337ab7); }
+}
+
+// -- patička (applyValueMode: "useButtons") -------------------------------
+.qpx-colorpicker-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid var(--qpx-border, #ccc);
+}
+
+.qpx-colorpicker-btn {
+    border: 1px solid var(--qpx-border, #ccc);
+    border-radius: $qpx-radius-sm;
+    background: var(--qpx-bg, #fff);
+    color: inherit;
+    font: inherit;
+    padding: $qpx-padding-btn-y $qpx-padding-btn-x;
+    cursor: pointer;
+
+    &:hover { border-color: var(--qpx-accent, #337ab7); }
+}
+
+.qpx-colorpicker-btn-apply {
+    background: var(--qpx-accent, #337ab7);
+    border-color: var(--qpx-accent, #337ab7);
+    color: var(--qpx-accent-contrast, #fff);
+
+    &:hover { opacity: .92; }
+}
+
+// -- stavy ---------------------------------------------------------------
+.qpx-colorpicker.qpx-state-disabled {
+    @include qpx-disabled-state;
+    cursor: not-allowed;
+}
+.qpx-colorpicker.qpx-state-readonly {
+    cursor: default;
+    .qpx-colorpicker-input { cursor: default; }
+}

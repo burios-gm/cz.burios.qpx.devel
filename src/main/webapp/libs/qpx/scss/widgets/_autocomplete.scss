@@ -1,0 +1,111 @@
+// =====================================================================
+// qpx - widgets/_autocomplete.scss
+// Styly pro komponentu "qpAutocomplete" (qpx.autocomplete.js).
+// Barvy jdou přes CSS custom properties --qpx-* (viz themes/_light.scss,
+// themes/_dark.scss), rozměry/mezery přes sdílené $qpx-* proměnné
+// z base/variables (stejná konvence jako widgets/_tagbox.scss).
+// =====================================================================
+
+@use "../base/variables" as *;
+
+.qpx-autocomplete {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-height: 34px;
+    padding: 4px 6px;
+    font-size: $qpx-font-size;
+    border-radius: $qpx-radius;
+    background: var(--qpx-bg, #fff);
+    color: var(--qpx-text, #333);
+    transition: border-color $qpx-transition, box-shadow $qpx-transition;
+
+    @include qpx-focus-ring;
+
+    &.qpx-hidden { display: none; }
+}
+
+// -- stylingMode varianty (stejná koncepce jako u dxAutocomplete editorů) --
+.qpx-autocomplete.qpx-autocomplete-mode-outlined {
+    border: 1px solid var(--qpx-border, #ccc);
+    &:hover { border-color: var(--qpx-accent, #337ab7); }
+}
+.qpx-autocomplete.qpx-autocomplete-mode-filled {
+    border: 1px solid transparent;
+    background: var(--qpx-surface, #f0f0f0);
+    &:hover { background: var(--qpx-hover, #e6e6e6); }
+}
+.qpx-autocomplete.qpx-autocomplete-mode-underlined {
+    border: none;
+    border-bottom: 1px solid var(--qpx-border, #ccc);
+    border-radius: 0;
+    background: transparent;
+    &:hover { border-bottom-color: var(--qpx-accent, #337ab7); }
+}
+
+.qpx-autocomplete-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: inherit;
+    font-size: inherit;
+    font-family: inherit;
+    padding: 2px 2px;
+}
+
+.qpx-autocomplete-clear {
+    flex: 0 0 auto;
+    cursor: pointer;
+    color: var(--qpx-text-muted, #767676);
+    line-height: 1;
+    padding: 2px 4px;
+    user-select: none;
+
+    &:hover { color: var(--qpx-text, #333); }
+}
+
+// -- rozbalovací seznam návrhů (staví na sdíleném widgets/_popup-list.scss) --
+.qpx-autocomplete-dropdown {
+    max-height: 280px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.qpx-autocomplete-list {
+    overflow-y: auto;
+}
+
+.qpx-autocomplete-item {
+    display: flex;
+    align-items: center;
+    padding: 6px 10px;
+    cursor: pointer;
+
+    &:hover,
+    &.qpx-state-highlighted { background: var(--qpx-hover, #eceff1); }
+}
+
+.qpx-autocomplete-item-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.qpx-autocomplete-nodata {
+    padding: 14px 10px;
+    text-align: center;
+    color: var(--qpx-text-muted, #767676);
+    font-size: 12px;
+}
+
+// -- stavy ---------------------------------------------------------------
+.qpx-autocomplete.qpx-state-disabled {
+    @include qpx-disabled-state;
+    cursor: not-allowed;
+}
+.qpx-autocomplete.qpx-state-readonly {
+    .qpx-autocomplete-input { cursor: default; }
+}

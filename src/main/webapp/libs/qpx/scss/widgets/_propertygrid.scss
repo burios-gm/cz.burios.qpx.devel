@@ -1,0 +1,182 @@
+// =====================================================================
+// qpx - widgets/_propertygrid.scss
+// Vzhled komponenty "qpPropertyGrid" (qpx.propertygrid.js) laděný na
+// styl Kendo UI "Classic" (Silver) — hlavička a skupinové pásy s jemným
+// gradientem, "zapuštěný" (bevel) label sloupec, plné mřížkové linky,
+// stínovaný vnější panel. Světlá i tmavá varianta jedou nad STEJNOU
+// sadou --qpx-* proměnných jako zbytek frameworku (žádné nové
+// proměnné) — gradienty jsou poskládané z var(--qpx-bg)/
+// var(--qpx-surface)/var(--qpx-border), takže se automaticky
+// přizpůsobí aktivnímu tématu (light / dark).
+//
+// Struktura odpovídá qpx.propertygrid.js (funkčně blízko EasyUI
+// PropertyGrid): JEDNA <table> s <colgroup>, volitelným <thead> a
+// <tbody>, kde skupina je <tr class="qpx-pg-group-row"><td colspan="2">
+// — stejná stavba jako group-row v EasyUI datagrid — a je volitelně
+// sbalitelná (.qpx-state-collapsed).
+//
+// Vnitřek vnořených editor-widgetů (qpTextBox, qpNumberBox, qpCheckBox,
+// qpSwitch, qpSelectBox, qpDatePicker, qpColorPicker, dropDownButton)
+// se odsud záměrně NEpřestylovává (respektuje se zapouzdření jejich
+// vlastního SCSS) — zde se řeší jen "rám" mřížky: hlavička, skupiny,
+// buňky, rozestupy.
+// =====================================================================
+
+@use "../base/variables" as *;
+
+.qpx-propertygrid {
+    display: block;
+    font-family: $qpx-font-family;
+    font-size: $qpx-font-size;
+    color: var(--qpx-text);
+
+    border: 1px solid var(--qpx-border);
+    border-radius: $qpx-radius-sm;
+    background: var(--qpx-bg);
+    box-shadow: 0 1px 3px var(--qpx-shadow, rgba(0, 0, 0, .15));
+    overflow: hidden; // aby zaoblené rohy ořízly hranatou tabulku uvnitř
+
+    &.qpx-hidden { display: none; }
+
+    &.qpx-state-disabled {
+        @include qpx-disabled-state;
+    }
+
+    // -------------------------------------------------------------
+    // Jediná tabulka — colgroup drží zarovnání hlavičky i všech
+    // řádků/skupin naprosto přesně (žádné dvě samostatné tabulky)
+    // -------------------------------------------------------------
+    .qpx-pg-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 0;
+        table-layout: fixed;
+    }
+
+    .qpx-pg-label {
+        padding: 6px 10px;
+        border-right: 1px solid var(--qpx-border);
+        vertical-align: middle;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .qpx-pg-editor {
+        padding: 5px 8px;
+        vertical-align: middle;
+    }
+
+    // -------------------------------------------------------------
+    // Hlavička "Vlastnost | Hodnota" — klasický Kendo grid header:
+    // jemný svislý gradient (bevel) + tučný text + silnější spodní linka
+    // -------------------------------------------------------------
+    thead .qpx-pg-header-row th {
+        font-weight: 700;
+        text-align: left;
+        background-image: linear-gradient(to bottom, var(--qpx-bg), var(--qpx-surface));
+        border-bottom: 2px solid var(--qpx-border);
+        color: var(--qpx-text);
+    }
+
+    // -------------------------------------------------------------
+    // Skupinový pás (<tr><td colspan="2">) — stínovaný pruh s barevným
+    // akcentem vlevo, typický pro "enterprise" property grid panely.
+    // Sbalitelný (collapsible: true) navíc má šipku a kurzor pointer.
+    // -------------------------------------------------------------
+    .qpx-pg-group-row {
+        td {
+            padding: 6px 10px 6px 8px;
+            background: var(--qpx-surface);
+            border-top: 1px solid var(--qpx-border);
+            border-bottom: 1px solid var(--qpx-border);
+            border-left: 3px solid var(--qpx-accent);
+            font-weight: 600;
+            font-size: 12px;
+            letter-spacing: .02em;
+            color: var(--qpx-text-muted);
+            user-select: none;
+        }
+
+        &:hover td { background: var(--qpx-hover); }
+
+        &:first-child td { border-top: none; }
+    }
+
+    .qpx-pg-group-toggle {
+        display: inline-block;
+        width: 12px;
+        text-align: center;
+        font-size: 10px;
+        margin-right: 4px;
+
+        &.qpx-pg-group-toggle-static { visibility: hidden; }
+    }
+
+    .qpx-pg-group-label {
+        color: var(--qpx-text);
+    }
+
+    .qpx-pg-group-count {
+        margin-left: 6px;
+        font-weight: 400;
+        color: var(--qpx-text-muted);
+    }
+
+    // sbalená skupina — jen kosmetický rozdíl na hlavičce (řádky samotné
+    // se skrývají/zobrazují přes jQuery .toggle() v JS)
+    .qpx-pg-group-row.qpx-state-collapsed td {
+        border-bottom-color: var(--qpx-border);
+    }
+
+    // -------------------------------------------------------------
+    // Řádek vlastnosti — plné mřížkové linky (Kendo classic styl),
+    // hover zvýrazní celý řádek (obě buňky)
+    // -------------------------------------------------------------
+    .qpx-pg-row {
+        border-bottom: 1px solid var(--qpx-border);
+        transition: background-color $qpx-transition;
+
+        &:hover {
+            .qpx-pg-label,
+            .qpx-pg-editor { background: var(--qpx-hover); }
+        }
+
+        &:last-child { border-bottom: none; }
+    }
+
+    // Label sloupec je trvale jemně "zapuštěný" (odlišuje needitovatelný
+    // popisek od editovatelné hodnoty) — typický vzhled property gridů
+    .qpx-pg-label {
+        background: var(--qpx-surface);
+        color: var(--qpx-text-muted);
+        font-weight: 500;
+    }
+
+    .qpx-pg-editor {
+        background: var(--qpx-bg);
+    }
+
+    // Needitovatelná hodnota (readOnly na úrovni celé mřížky nebo řádku)
+    .qpx-pg-readonly {
+        display: inline-block;
+        padding: 3px 4px;
+        color: var(--qpx-text-muted);
+        font-style: italic;
+    }
+
+    // -------------------------------------------------------------
+    // Vnořené editor-widgety — jen rozměr/zarovnání v buňce,
+    // vzhled jednotlivých widgetů řeší jejich vlastní SCSS
+    // -------------------------------------------------------------
+    .qpx-pg-editor {
+        .qpx-view { width: 100%; }
+
+        // kompaktní ovládací prvky se nemají roztahovat na 100 % šířky
+        .qpx-switch,
+        .qpx-checkbox {
+            width: auto;
+            display: inline-flex;
+        }
+    }
+}

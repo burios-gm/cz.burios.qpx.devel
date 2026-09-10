@@ -1,0 +1,152 @@
+/*!
+ * qpx - qpRibbonDropDownButton styles
+ * Ploché rozbalovací/split tlačítko pro položky qpRibbon (styl Office
+ * 365 online), sladěné rozměrově s qpRibbonButton (viz
+ * scss/widgets/_ribbonbutton.scss - stejná $qpx-ribbon-item-large-width
+ * a $qpx-ribbon-btn-small-height, aby šly oba widgety v ribbonu
+ * libovolně kombinovat/řadit vedle sebe i do stack sloupců).
+ *
+ * Non-split: celý widget je jedna klikací zóna (otevře menu).
+ * Split: ikonová zóna (výchozí akce) a zóna text+šipka (otevře menu)
+ * se zvýrazňují při hoveru samostatně - přesně jak to dělá Office
+ * u tlačítek typu "Vložit ▾".
+ */
+
+@use "../base/variables" as *;
+
+.qpx-ribbon-ddbutton {
+    display: inline-flex;
+    align-items: center;
+    box-sizing: border-box;
+    cursor: pointer;
+    outline: none;
+    border-radius: $qpx-radius-sm;
+    background: transparent;
+    color: var(--qpx-text, #333);
+    font-family: inherit;
+    font-size: $qpx-font-size-sm;
+    transition: background $qpx-transition;
+    overflow: hidden;
+
+    &:hover:not(.qpx-state-disabled) {
+        background: var(--qpx-hover, #eceff1);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--qpx-accent, #337ab7);
+        outline-offset: -2px;
+    }
+
+    &.qpx-state-disabled {
+        @include qpx-disabled-state;
+    }
+
+    &.qpx-hidden { display: none; }
+
+    .qpx-icon {
+        flex: 0 0 auto;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+    }
+
+    .qpx-ribbonbutton-text {
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .qpx-ribbon-ddbutton-arrow {
+        flex: 0 0 auto;
+        font-size: 8px;
+        line-height: 1;
+        opacity: .75;
+        margin-left: 2px;
+    }
+
+    .qpx-ribbon-ddbutton-iconzone {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 auto;
+    }
+
+    .qpx-ribbon-ddbutton-labelzone {
+        display: flex;
+        align-items: center;
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    // v "split" režimu se nezvýrazňuje celý widget najednou, ale jen ta
+    // zóna, na kterou se zrovna najede myší (viz níže)
+    &.qpx-ribbon-ddbutton-split:hover:not(.qpx-state-disabled) {
+        background: transparent;
+    }
+    &.qpx-ribbon-ddbutton-split .qpx-ribbon-ddbutton-iconzone:hover,
+    &.qpx-ribbon-ddbutton-split .qpx-ribbon-ddbutton-labelzone:hover {
+        background: var(--qpx-hover, #eceff1);
+    }
+}
+
+// --- velká varianta: ikona nahoře, pod ní pruh s textem a šipkou -----------
+.qpx-ribbon-ddbutton-large {
+    flex-direction: column;
+    justify-content: center;
+    width: $qpx-ribbon-item-large-width;
+    height: 100%;
+    padding: 4px 2px 2px;
+    text-align: center;
+
+    .qpx-ribbon-ddbutton-iconzone {
+        flex: 1 1 auto;
+        width: 100%;
+        .qpx-icon { font-size: $qpx-ribbon-icon-size-large; }
+    }
+
+    .qpx-ribbon-ddbutton-labelzone {
+        flex: 0 0 auto;
+        justify-content: center;
+        width: 100%;
+    }
+
+    .qpx-ribbonbutton-text {
+        font-size: $qpx-font-size-sm;
+        line-height: 1.15;
+        white-space: normal;
+    }
+
+    // u split varianty odděluje ikonovou a popiskovou zónu jemná linka -
+    // stejně jako v Office u tlačítek "Vložit" nad "Vložit ▾"
+    &.qpx-ribbon-ddbutton-split .qpx-ribbon-ddbutton-labelzone {
+        border-top: 1px solid var(--qpx-border, #ccc);
+    }
+}
+
+// --- malá (kompaktní) varianta: ikona + text + šipka v jedné řádce --------
+.qpx-ribbon-ddbutton-small {
+    flex-direction: row;
+    height: $qpx-ribbon-btn-small-height;
+    white-space: nowrap;
+
+    &:not(.qpx-ribbon-ddbutton-split) {
+        padding: 0 6px;
+        gap: $qpx-gap-xs;
+    }
+
+    .qpx-icon { font-size: $qpx-ribbon-icon-size; }
+
+    &.qpx-ribbon-ddbutton-split {
+        .qpx-ribbon-ddbutton-iconzone {
+            height: 100%;
+            padding: 0 4px 0 6px;
+            gap: $qpx-gap-xs;
+        }
+        .qpx-ribbon-ddbutton-labelzone {
+            height: 100%;
+            padding: 0 6px 0 3px;
+            gap: 2px;
+            border-left: 1px solid var(--qpx-border, #ccc);
+        }
+    }
+}

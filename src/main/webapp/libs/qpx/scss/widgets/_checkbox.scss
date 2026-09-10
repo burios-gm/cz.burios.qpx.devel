@@ -1,0 +1,112 @@
+// =====================================================================
+// qpx - widgets/_checkbox.scss
+// Vzhled qpCheckBox - vychází z DevExtreme Generic Light/Dark dxCheckBox:
+// hranatý (mírně zaoblený) čtverec, na "checked"/"indeterminate" se
+// vyplní akcentovou barvou a zobrazí bílá značka. Barvy jdou přes
+// CSS proměnné (--qpx-*), takže se automaticky přizpůsobí aktivnímu
+// tématu (viz scss/themes/_light.scss a _dark.scss).
+// =====================================================================
+
+@use "../base/variables" as *;
+
+.qpx-checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: $qpx-gap-md;
+    cursor: pointer;
+    outline: none;
+    user-select: none;
+    color: var(--qpx-text, #333);
+    font-size: $qpx-font-size;
+
+    &.qpx-hidden { display: none; }
+
+    &.qpx-checkbox-hoverable:hover .qpx-checkbox-icon {
+        border-color: var(--qpx-accent, #337ab7);
+    }
+
+    @include qpx-focus-ring;
+    &:focus-visible .qpx-checkbox-icon {
+        box-shadow: 0 0 0 2px var(--qpx-accent, #337ab7);
+    }
+}
+
+.qpx-checkbox-icon {
+    position: relative;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--qpx-border, #ccc);
+    border-radius: $qpx-radius-sm;
+    background: var(--qpx-bg, #fff);
+    transition: background $qpx-transition, border-color $qpx-transition;
+}
+
+.qpx-checkbox-mark {
+    position: relative;
+    display: block;
+    width: 62%;
+    height: 62%;
+    opacity: 0;
+    transform: scale(.6);
+    transition: opacity $qpx-transition, transform $qpx-transition;
+
+    // fajfka - dvě spojené hrany otočené o -45°
+    &::before {
+        content: "";
+        position: absolute;
+        left: 12%;
+        top: 38%;
+        width: 60%;
+        height: 30%;
+        border-left: 2px solid var(--qpx-accent-contrast, #fff);
+        border-bottom: 2px solid var(--qpx-accent-contrast, #fff);
+        transform: rotate(-45deg);
+        transform-origin: left bottom;
+    }
+}
+
+.qpx-checkbox-text {
+    line-height: 1.2;
+}
+
+// --- stav "checked" ---------------------------------------------------
+.qpx-checkbox.qpx-state-checked .qpx-checkbox-icon {
+    background: var(--qpx-accent, #337ab7);
+    border-color: var(--qpx-accent, #337ab7);
+}
+.qpx-checkbox.qpx-state-checked .qpx-checkbox-mark {
+    opacity: 1;
+    transform: scale(1);
+}
+
+// --- stav "indeterminate" (neurčitý - jen programově) -----------------
+.qpx-checkbox.qpx-state-indeterminate .qpx-checkbox-icon {
+    background: var(--qpx-accent, #337ab7);
+    border-color: var(--qpx-accent, #337ab7);
+}
+.qpx-checkbox.qpx-state-indeterminate .qpx-checkbox-mark {
+    opacity: 1;
+    transform: scale(1);
+
+    // v indeterminate stavu nahrazujeme fajfku vodorovnou "pomlčkou"
+    &::before {
+        border-left: none;
+        border-bottom: 2px solid var(--qpx-accent-contrast, #fff);
+        left: 18%;
+        top: 44%;
+        width: 64%;
+        height: 0;
+        transform: none;
+    }
+}
+
+// --- stavy disabled / readonly ----------------------------------------
+.qpx-checkbox.qpx-state-disabled {
+    @include qpx-disabled-state;
+}
+
+.qpx-checkbox.qpx-state-readonly {
+    cursor: default;
+}

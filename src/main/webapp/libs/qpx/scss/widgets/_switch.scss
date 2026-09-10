@@ -1,0 +1,118 @@
+// qpx - qpSwitch styles
+// Používá CSS custom properties pro snadné přepínání vzhledu.
+
+.qpx-switch {
+  --qpx-switch-width: 3rem;
+  --qpx-switch-height: 1.6rem;
+  --qpx-switch-track-bg-off: #ccc;
+  --qpx-switch-track-bg-on: #4caf50;
+  --qpx-switch-track-border: #999;
+  --qpx-switch-thumb-size: 1.2rem;
+  --qpx-switch-thumb-bg: #fff;
+  --qpx-switch-thumb-shadow: 0 0 2px rgba(0, 0, 0, 0.3);
+  --qpx-switch-label-color: #333;
+  --qpx-switch-disabled-opacity: 0.5;
+
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+
+  &.qpx-hidden {
+    display: none;
+  }
+
+  &.qpx-state-disabled {
+    cursor: default;
+    opacity: var(--qpx-switch-disabled-opacity);
+  }
+
+  .qpx-switch-track {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    width: var(--qpx-switch-width);
+    height: var(--qpx-switch-height);
+    border-radius: calc(var(--qpx-switch-height) / 2);
+    background-color: var(--qpx-switch-track-bg-off);
+    border: 1px solid var(--qpx-switch-track-border);
+    box-sizing: border-box;
+    padding: 0 0.2rem;
+    transition: background-color 120ms ease, border-color 120ms ease;
+  }
+
+  .qpx-switch-thumb {
+    position: absolute;
+    top: 50%;
+    left: 0.2rem;
+    width: var(--qpx-switch-thumb-size);
+    height: var(--qpx-switch-thumb-size);
+    border-radius: 50%;
+    background-color: var(--qpx-switch-thumb-bg);
+    box-shadow: var(--qpx-switch-thumb-shadow);
+    transform: translate(0, -50%);
+    transition: transform 120ms ease;
+  }
+
+  .qpx-switch-label {
+    font-size: 0.7rem;
+    color: var(--qpx-switch-label-color);
+    pointer-events: none;
+
+    &.qpx-switch-label-on {
+      text-align: right;
+      flex: 1;
+    }
+
+    &.qpx-switch-label-off {
+      text-align: left;
+      flex: 1;
+    }
+  }
+
+  &.qpx-switch-on {
+    .qpx-switch-track {
+      background-color: var(--qpx-switch-track-bg-on);
+      border-color: var(--qpx-switch-track-bg-on);
+    }
+
+    .qpx-switch-thumb {
+      transform: translate(calc(var(--qpx-switch-width) - var(--qpx-switch-thumb-size) - 0.4rem), -50%);
+    }
+  }
+
+  &.qpx-switch-off {
+    .qpx-switch-track {
+      background-color: var(--qpx-switch-track-bg-off);
+    }
+
+    .qpx-switch-thumb {
+      transform: translate(0, -50%);
+    }
+  }
+
+  // stylingMode: default | outlined | flat
+  &.qpx-switch-mode-default {
+    // výchozí – používá výše definované var
+  }
+
+  &.qpx-switch-mode-outlined {
+    --qpx-switch-track-bg-off: #fff;
+    --qpx-switch-track-bg-on: #e0f2f1;
+    --qpx-switch-track-border: #26a69a;
+    --qpx-switch-thumb-bg: #26a69a;
+    --qpx-switch-label-color: #004d40;
+  }
+
+  &.qpx-switch-mode-flat {
+    --qpx-switch-track-bg-off: transparent;
+    --qpx-switch-track-bg-on: transparent;
+    --qpx-switch-track-border: transparent;
+    --qpx-switch-thumb-shadow: none;
+    --qpx-switch-thumb-bg: #4caf50;
+    --qpx-switch-label-color: #4caf50;
+  }
+}

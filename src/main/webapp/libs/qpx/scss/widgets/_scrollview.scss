@@ -1,0 +1,174 @@
+// =====================================================================
+// qpx - widgets/_scrollview.scss
+// qpScrollView - kontejner pro scrollovatelný obsah (Webix ScrollView
+// styl): řada/sloupec karet nebo libovolně velký volný obsah, tažení
+// myší, volitelné přichytávání na položky (nativní CSS scroll-snap)
+// a šipky prev/next.
+// =====================================================================
+
+@use "../base/variables" as *;
+
+.qpx-scrollview {
+    position: relative;
+    display: block;
+    width: 100%;
+
+    &.qpx-state-disabled {
+        @include qpx-disabled-state;
+    }
+}
+
+.qpx-scrollview-viewport {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    scroll-behavior: smooth;
+    cursor: grab;
+    outline: none;
+
+    &:focus-visible {
+        box-shadow: 0 0 0 2px var(--qpx-accent, #337ab7) inset;
+    }
+}
+
+.qpx-scrollview-viewport.qpx-scrollview-scroll-x {
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+.qpx-scrollview-viewport.qpx-scrollview-scroll-y {
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+.qpx-scrollview-viewport.qpx-scrollview-scroll-x.qpx-scrollview-scroll-y {
+    overflow: auto;
+}
+
+.qpx-scrollview-viewport.qpx-scrollview-snap {
+    scroll-snap-type: x mandatory;
+}
+.qpx-scrollview-dir-y .qpx-scrollview-viewport.qpx-scrollview-snap {
+    scroll-snap-type: y mandatory;
+}
+
+.qpx-scrollview-dragging {
+    cursor: grabbing !important;
+    user-select: none;
+    scroll-behavior: auto;
+}
+
+.qpx-scrollview-body {
+    display: block;
+    width: max-content;
+}
+.qpx-scrollview-dir-y .qpx-scrollview-body,
+.qpx-scrollview-dir-xy .qpx-scrollview-body {
+    width: auto;
+}
+
+.qpx-scrollview-body.qpx-scrollview-items {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    width: max-content;
+}
+.qpx-scrollview-dir-y .qpx-scrollview-body.qpx-scrollview-items {
+    flex-direction: column;
+    width: auto;
+}
+
+.qpx-scrollview-item {
+    flex: 0 0 auto;
+    background: var(--qpx-surface, #f8f9fb);
+    border: 1px solid var(--qpx-border, #d3d9df);
+    border-radius: $qpx-radius-md;
+    padding: $qpx-gap-md;
+    color: var(--qpx-text, #333333);
+    scroll-snap-align: start;
+}
+
+// -----------------------------------------------------------------
+// scrollbar - tenký, obarvený proměnnými tématu; showScrollbar:false
+// jej skryje úplně (obsah zůstává scrollovatelný, jen bez ukazatele)
+// -----------------------------------------------------------------
+.qpx-scrollview-viewport {
+    scrollbar-width: thin;
+    scrollbar-color: var(--qpx-border, #d3d9df) transparent;
+}
+.qpx-scrollview-viewport::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+}
+.qpx-scrollview-viewport::-webkit-scrollbar-track {
+    background: transparent;
+}
+.qpx-scrollview-viewport::-webkit-scrollbar-thumb {
+    background: var(--qpx-border, #d3d9df);
+    border-radius: 4px;
+}
+.qpx-scrollview-viewport::-webkit-scrollbar-thumb:hover {
+    background: var(--qpx-accent, #337ab7);
+}
+
+.qpx-scrollview-hide-scrollbar .qpx-scrollview-viewport {
+    scrollbar-width: none;
+}
+.qpx-scrollview-hide-scrollbar .qpx-scrollview-viewport::-webkit-scrollbar {
+    display: none;
+}
+
+// -----------------------------------------------------------------
+// šipky prev/next
+// -----------------------------------------------------------------
+.qpx-scrollview-nav {
+    position: absolute;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: 1px solid var(--qpx-border, #d3d9df);
+    border-radius: 50%;
+    background: var(--qpx-bg, #ffffff);
+    color: var(--qpx-text, #333333);
+    box-shadow: 0 2px 6px var(--qpx-shadow, rgba(0, 0, 0, .15));
+    cursor: pointer;
+    transition: color $qpx-transition, background-color $qpx-transition;
+
+    @include qpx-focus-ring;
+
+    &:hover {
+        background: var(--qpx-hover, #eceff1);
+        color: var(--qpx-accent, #337ab7);
+    }
+
+    &.qpx-state-disabled {
+        @include qpx-disabled-state;
+    }
+}
+
+.qpx-scrollview-dir-x .qpx-scrollview-nav-prev,
+.qpx-scrollview-dir-xy .qpx-scrollview-nav-prev {
+    top: 50%;
+    left: 6px;
+    transform: translateY(-50%);
+}
+.qpx-scrollview-dir-x .qpx-scrollview-nav-next,
+.qpx-scrollview-dir-xy .qpx-scrollview-nav-next {
+    top: 50%;
+    right: 6px;
+    transform: translateY(-50%);
+}
+.qpx-scrollview-dir-y .qpx-scrollview-nav-prev {
+    top: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+.qpx-scrollview-dir-y .qpx-scrollview-nav-next {
+    bottom: 6px;
+    left: 50%;
+    top: auto;
+    transform: translateX(-50%);
+}

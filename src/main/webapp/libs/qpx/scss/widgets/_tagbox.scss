@@ -1,0 +1,215 @@
+// =====================================================================
+// qpx - widgets/_tagbox.scss
+// Styly pro komponentu "qpTagBox" (qpx.tagbox.js).
+// Barvy jdou přes CSS custom properties --qpx-* (viz themes/_light.scss,
+// themes/_dark.scss), rozměry/mezery přes sdílené $qpx-* proměnné
+// z base/variables (stejná konvence jako widgets/_button.scss).
+// =====================================================================
+
+@use "../base/variables" as *;
+
+.qpx-tagbox {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: $qpx-gap-sm;
+    min-height: 34px;
+    padding: 4px 6px;
+    font-size: $qpx-font-size;
+    border-radius: $qpx-radius;
+    cursor: text;
+    background: var(--qpx-bg, #fff);
+    color: var(--qpx-text, #333);
+    transition: border-color $qpx-transition, box-shadow $qpx-transition;
+
+    @include qpx-focus-ring;
+
+    &.qpx-hidden { display: none; }
+}
+
+// -- stylingMode varianty (stejná koncepce jako u dxTagBox editorů) ----
+.qpx-tagbox.qpx-tagbox-mode-outlined {
+    border: 1px solid var(--qpx-border, #ccc);
+    &:hover { border-color: var(--qpx-accent, #337ab7); }
+}
+.qpx-tagbox.qpx-tagbox-mode-filled {
+    border: 1px solid transparent;
+    background: var(--qpx-surface, #f0f0f0);
+    &:hover { background: var(--qpx-hover, #e6e6e6); }
+}
+.qpx-tagbox.qpx-tagbox-mode-underlined {
+    border: none;
+    border-bottom: 1px solid var(--qpx-border, #ccc);
+    border-radius: 0;
+    background: transparent;
+    &:hover { border-bottom-color: var(--qpx-accent, #337ab7); }
+}
+
+// -- pole s tagy + vyhledávacím inputem --------------------------------
+.qpx-tagbox-field {
+    flex: 1 1 auto;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 4px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    min-width: 0;
+
+    &::-webkit-scrollbar { display: none; }
+
+    &.qpx-tagbox-field-multiline {
+        flex-wrap: wrap;
+        overflow: visible;
+    }
+}
+
+.qpx-tagbox-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 100%;
+    padding: 2px 6px;
+    border-radius: $qpx-radius;
+    background: var(--qpx-selected, #e3f0fb);
+    color: var(--qpx-text, #333);
+    font-size: 12px;
+    line-height: 1.4;
+    white-space: nowrap;
+    flex: 0 0 auto;
+}
+.qpx-tagbox-tag-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 220px;
+}
+.qpx-tagbox-tag-remove {
+    cursor: pointer;
+    opacity: 0.6;
+    font-size: 10px;
+    line-height: 1;
+    padding: 0 2px;
+    border-radius: 50%;
+
+    &:hover { opacity: 1; background: var(--qpx-shadow, rgba(0, 0, 0, .15)); }
+}
+.qpx-tagbox-tag-summary {
+    background: var(--qpx-surface, #f0f0f0);
+    color: var(--qpx-text-muted, #767676);
+    font-weight: 600;
+}
+
+.qpx-tagbox-search {
+    flex: 1 1 60px;
+    min-width: 40px;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: inherit;
+    font-size: inherit;
+    font-family: inherit;
+    padding: 2px 2px;
+}
+
+// -- vymazat výběr / rozbalovací šipka ----------------------------------
+.qpx-tagbox-clear,
+.qpx-tagbox-arrow {
+    flex: 0 0 auto;
+    align-self: center;
+    cursor: pointer;
+    color: var(--qpx-text-muted, #767676);
+    line-height: 1;
+    padding: 2px 4px;
+    user-select: none;
+}
+.qpx-tagbox-clear:hover,
+.qpx-tagbox-arrow:hover { color: var(--qpx-text, #333); }
+
+.qpx-tagbox[aria-expanded="true"] .qpx-tagbox-arrow { transform: rotate(180deg); }
+
+// -- rozbalovací seznam (staví na sdíleném widgets/_popup-list.scss) ---
+.qpx-tagbox-dropdown {
+    max-height: 280px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.qpx-tagbox-list {
+    overflow-y: auto;
+}
+
+.qpx-tagbox-selection-controls {
+    display: flex;
+    gap: 14px;
+    padding: 6px 10px;
+    font-size: 12px;
+    border-bottom: 1px solid var(--qpx-border, #ccc);
+    flex: 0 0 auto;
+
+    span {
+        cursor: pointer;
+        color: var(--qpx-accent, #337ab7);
+        &:hover { text-decoration: underline; }
+    }
+}
+
+.qpx-tagbox-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    cursor: pointer;
+
+    &:hover,
+    &.qpx-state-highlighted { background: var(--qpx-hover, #eceff1); }
+
+    &.qpx-state-selected .qpx-tagbox-item-check {
+        border-color: var(--qpx-accent, #337ab7);
+        background: var(--qpx-accent, #337ab7);
+
+        &::after {
+            content: "";
+            display: block;
+            width: 4px;
+            height: 8px;
+            margin: 1px auto 0;
+            border: solid var(--qpx-accent-contrast, #fff);
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+    }
+}
+
+.qpx-tagbox-item-check {
+    flex: 0 0 auto;
+    width: 14px;
+    height: 14px;
+    border: 1px solid var(--qpx-border, #ccc);
+    border-radius: 3px;
+    box-sizing: border-box;
+}
+
+.qpx-tagbox-item-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.qpx-tagbox-nodata {
+    padding: 14px 10px;
+    text-align: center;
+    color: var(--qpx-text-muted, #767676);
+    font-size: 12px;
+}
+
+// -- stavy ---------------------------------------------------------------
+.qpx-tagbox.qpx-state-disabled {
+    @include qpx-disabled-state;
+    cursor: not-allowed;
+}
+.qpx-tagbox.qpx-state-readonly {
+    cursor: default;
+    .qpx-tagbox-search { cursor: default; }
+}

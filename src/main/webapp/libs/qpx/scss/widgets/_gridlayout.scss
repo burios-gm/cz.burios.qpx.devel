@@ -1,0 +1,65 @@
+// =====================================================================
+// qpx - widgets/_gridlayout.scss
+// qpGridLayout - rozkládací kontejner nad nativním CSS Gridem (Webix
+// GridLayout styl). Na rozdíl od qpFlexLayout jde o dvourozměrnou
+// mřížku s podporou slučování buněk (colSpan/rowSpan) - vše čisté CSS,
+// žádný JS listener na resize.
+// =====================================================================
+
+@use "../base/variables" as *;
+
+.qpx-gridlayout {
+    display: grid;
+    box-sizing: border-box;
+    min-width: 0;
+    min-height: 0;
+
+    &.qpx-state-disabled {
+        @include qpx-disabled-state;
+    }
+}
+
+.qpx-gridlayout-cell {
+    position: relative;
+    display: flex;
+    box-sizing: border-box;
+    min-width: 0;
+    min-height: 0;
+}
+
+// vnořený qpx widget se roztáhne na celou buňku (stejná konvence jako
+// u qpFlexLayout / základního "layout" widgetu)
+.qpx-gridlayout-cell > .qpx-view {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+}
+
+// prázdné vyhrazené místo v mřížce bez obsahu
+.qpx-gridlayout-spacer {
+    pointer-events: none;
+}
+
+// -----------------------------------------------------------------
+// debug: true - tenký obrys kolem každé buňky + pořadové číslo, jen
+// pro ladění/demo mřížky (outline místo border, aby nezasahoval do
+// výpočtu velikostí gridu)
+// -----------------------------------------------------------------
+.qpx-gridlayout-debug > .qpx-gridlayout-cell {
+    outline: 1px dashed var(--qpx-border, #d3d9df);
+    outline-offset: -1px;
+}
+.qpx-gridlayout-debug > .qpx-gridlayout-cell::before {
+    content: attr(data-qpx-index);
+    position: absolute;
+    top: 2px;
+    left: 4px;
+    z-index: 1;
+    padding: 0 3px;
+    font-size: 9px;
+    line-height: 1.4;
+    color: var(--qpx-text-muted, #767676);
+    background: var(--qpx-surface, #f8f9fb);
+    border-radius: 2px;
+    pointer-events: none;
+}

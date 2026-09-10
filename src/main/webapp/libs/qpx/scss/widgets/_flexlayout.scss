@@ -1,0 +1,66 @@
+// =====================================================================
+// qpx - widgets/_flexlayout.scss
+// qpFlexLayout - rozkládací kontejner nad CSS flexboxem (Webix
+// FlexLayout styl). Na rozdíl od základního "layout" (qpx-layout,
+// rows/cols) tady widget jen nastavuje inline flex-* vlastnosti podle
+// configu - veškerá "chytrost" (wrap, řazení, zarovnání) je čisté CSS,
+// žádný JS listener na resize.
+// =====================================================================
+
+@use "../base/variables" as *;
+
+.qpx-flexlayout {
+    display: flex;
+    box-sizing: border-box;
+    min-width: 0;
+    min-height: 0;
+
+    &.qpx-state-disabled {
+        @include qpx-disabled-state;
+    }
+}
+
+.qpx-flexlayout-cell {
+    position: relative;
+    display: flex;
+    box-sizing: border-box;
+    min-width: 0;
+    min-height: 0;
+}
+
+// vnořený qpx widget se roztáhne na celou buňku (stejná konvence jako
+// .qpx-cell > .qpx-view u základního "layout" widgetu)
+.qpx-flexlayout-cell > .qpx-view {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+}
+
+// prázdná "pružná" mezera bez obsahu
+.qpx-flexlayout-spacer {
+    pointer-events: none;
+}
+
+// -----------------------------------------------------------------
+// debug: true - tenký obrys kolem každé buňky + pořadové číslo, jen
+// pro ladění/demo layoutu, nemá vliv na skutečné rozměry (outline
+// místo border, aby nezasahoval do flexbox výpočtu velikostí)
+// -----------------------------------------------------------------
+.qpx-flexlayout-debug > .qpx-flexlayout-cell {
+    outline: 1px dashed var(--qpx-border, #d3d9df);
+    outline-offset: -1px;
+}
+.qpx-flexlayout-debug > .qpx-flexlayout-cell::before {
+    content: attr(data-qpx-index);
+    position: absolute;
+    top: 2px;
+    left: 4px;
+    z-index: 1;
+    padding: 0 3px;
+    font-size: 9px;
+    line-height: 1.4;
+    color: var(--qpx-text-muted, #767676);
+    background: var(--qpx-surface, #f8f9fb);
+    border-radius: 2px;
+    pointer-events: none;
+}

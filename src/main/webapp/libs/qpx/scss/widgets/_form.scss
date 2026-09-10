@@ -1,0 +1,147 @@
+// =====================================================================
+// qpx - widgets/_form.scss
+// Styly pro komponentu "qpForm" (qpx.form.js) — layout řádků/sloupců,
+// popisky, fieldset skupiny a validační stavy. Barvy jdou přes CSS
+// custom properties --qpx-* (stejné jako zbytek frameworku), takže
+// vzhled odpovídá DevExtreme light/dark automaticky
+// podle aktivní třídy .qpx-theme-light/-dark (žádné nové
+// proměnné, žádné pevné barvy).
+//
+// qpForm sám nevytváří žádné vstupní prvky (input/select/...) — ty
+// jsou vždy vnořené qpx widgety (qpTextBox, qpSelectBox, ...), které
+// si vzhled řeší samy. Tady se stylují jen "rám" formuláře: rozložení
+// řádků/sloupců, popisky, fieldset, hint/chybové texty a stav
+// qpx-state-invalid (červený rámeček kolem PRÁVĚ mountnutého widgetu,
+// univerzálně přes .qpx-view, bez ohledu na konkrétní typ pole).
+// =====================================================================
+
+@use "../base/variables" as *;
+
+.qpx-form {
+    display: block;
+    font-family: $qpx-font-family;
+    font-size: $qpx-font-size;
+    color: var(--qpx-text);
+
+    &.qpx-hidden { display: none; }
+
+    &.qpx-state-disabled {
+        @include qpx-disabled-state;
+    }
+}
+
+// -- rozložení ------------------------------------------------------------
+.qpx-form-rows {
+    display: flex;
+    flex-direction: column;
+}
+
+.qpx-form-cols {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+}
+
+.qpx-form-col {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+// -- řádek: popisek + pole --------------------------------------------------
+.qpx-form-row {
+    display: flex;
+
+    &.qpx-form-row-label-left {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: $qpx-gap-md;
+    }
+
+    &.qpx-form-row-label-top {
+        flex-direction: column;
+        align-items: stretch;
+        gap: $qpx-gap-xs;
+    }
+}
+
+.qpx-form-label {
+    flex: 0 0 auto;
+    padding-top: 7px; // vizuálně zarovná text popisku se vstupem vedle
+    color: var(--qpx-text, #333);
+    font-size: $qpx-font-size;
+}
+
+.qpx-form-row-label-left .qpx-form-label {
+    text-align: right;
+}
+
+.qpx-form-required {
+    color: var(--qpx-danger, #d9534f);
+}
+
+.qpx-form-field {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.qpx-form-control {
+    // vnořený qpx widget (qpTextBox, qpSelectBox, ...) se přirozeně
+    // roztáhne na celou dostupnou šířku pole
+    .qpx-view { width: 100%; }
+
+    // kompaktní ovládací prvky se nemají roztahovat na 100 % šířky
+    .qpx-switch,
+    .qpx-checkbox {
+        width: auto;
+        display: inline-flex;
+    }
+}
+
+.qpx-form-hint {
+    margin-top: 4px;
+    font-size: $qpx-font-size-sm;
+    color: var(--qpx-text-muted, #767676);
+}
+
+.qpx-form-error {
+    margin-top: 4px;
+    font-size: $qpx-font-size-sm;
+    color: var(--qpx-danger, #d9534f);
+}
+
+// -- validace: červený rámeček kolem mountnutého widgetu (univerzálně) --
+.qpx-form-row.qpx-state-invalid {
+    .qpx-form-control > .qpx-view {
+        box-shadow: 0 0 0 1px var(--qpx-danger, #d9534f) inset;
+        border-radius: $qpx-radius;
+    }
+    .qpx-form-label { color: var(--qpx-danger, #d9534f); }
+}
+
+// -- fieldset skupina -------------------------------------------------------
+.qpx-form-fieldset {
+    margin: 0 0 $qpx-gap-md;
+    padding: $qpx-gap-md $qpx-gap-md 4px;
+    border: 1px solid var(--qpx-border, #ccc);
+    border-radius: $qpx-radius;
+
+    legend {
+        padding: 0 6px;
+        font-size: $qpx-font-size;
+        font-weight: 600;
+        color: var(--qpx-accent, #337ab7);
+    }
+}
+
+// -- oddělovač / mezera / prvek bez popisku ---------------------------------
+.qpx-form-template {
+    color: var(--qpx-text, #333);
+}
+
+.qpx-form-spacer {
+    flex: 0 0 auto;
+}
+
+.qpx-form-plain {
+    .qpx-view { display: inline-flex; }
+}

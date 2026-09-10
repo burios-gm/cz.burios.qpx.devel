@@ -1,0 +1,99 @@
+// =====================================================================
+// qpx - widgets/_syntaxeditor.scss
+// qpSyntaxEditor je obálka nad Ace Editorem - samotnou plochu kódu
+// (písmo, gutter, zvýraznění syntaxe) barví přímo zvolené Ace téma
+// ("chrome" pro light / "tomorrow_night" pro dark -
+// viz mapování THEME_ALIASES v qpx.syntaxeditor.js). Zde se řeší jen
+// vnější rámeček/stavy/overlaye tak, aby widget vizuálně zapadl mezi
+// ostatní qpx formulářové prvky (stejný radius/border/focus ring jako
+// qpTextBox/qpNumberBox).
+// =====================================================================
+
+@use "../base/variables" as *;
+
+.qpx-syntaxeditor {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    border: 1px solid var(--qpx-border, #ccc);
+    border-radius: $qpx-radius;
+    background: var(--qpx-bg, #fff);
+    transition: border-color $qpx-transition, box-shadow $qpx-transition;
+
+    &.qpx-hidden { display: none; }
+
+    &.qpx-state-focused {
+        border-color: var(--qpx-accent, #337ab7);
+        box-shadow: 0 0 0 2px var(--qpx-accent, #337ab7) inset;
+    }
+
+    &.qpx-state-disabled {
+        @include qpx-disabled-state;
+    }
+
+    &.qpx-state-readonly {
+        // Ace si čitelnost readonly stavu řeší sám (kurzor/gutter),
+        // zde jen jemně naznačíme stav na rámečku kontejneru
+        border-style: dashed;
+    }
+}
+
+.qpx-syntaxeditor-host {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+
+    // Ace si vykresluje vlastní <textarea>/gutter uvnitř - potlačíme jen
+    // globální box-sizing nesrovnalosti, samotný vzhled nechává na svém tématu
+    :focus { outline: none; }
+}
+
+.qpx-syntaxeditor-placeholder {
+    position: absolute;
+    top: 6px;
+    left: 54px; // za výchozí šířku gutteru, ať nepřekrývá čísla řádků
+    right: 8px;
+    z-index: 2;
+    pointer-events: none;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: $qpx-font-size;
+    color: var(--qpx-text-muted, #767676);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.qpx-syntaxeditor-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: $qpx-gap-sm;
+    padding: 12px;
+    text-align: center;
+    font-size: $qpx-font-size;
+    color: var(--qpx-text-muted, #767676);
+    background: var(--qpx-bg, #fff);
+
+    &:not(.qpx-syntaxeditor-overlay-error)::before {
+        content: "";
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid var(--qpx-border, #ccc);
+        border-top-color: var(--qpx-accent, #337ab7);
+        border-radius: 50%;
+        animation: qpx-syntaxeditor-spin .8s linear infinite;
+    }
+
+    &.qpx-syntaxeditor-overlay-error {
+        color: var(--qpx-danger, #d9534f);
+    }
+}
+
+@keyframes qpx-syntaxeditor-spin {
+    to { transform: rotate(360deg); }
+}

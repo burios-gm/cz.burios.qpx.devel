@@ -1,0 +1,209 @@
+// =====================================================================
+// qpx - widgets/_lookup.scss
+// Styly pro komponentu "qpLookup" (qpx.lookup.js).
+// Barvy jdou přes CSS custom properties --qpx-* (viz themes/_light.scss,
+// themes/_dark.scss), rozměry/mezery přes sdílené $qpx-* proměnné
+// z base/variables (stejná konvence jako widgets/_tagbox.scss).
+// Narozdíl od ostatních "combo" widgetů se qpLookup neotvírá jako
+// dropdown pod polem, ale jako vystředěný modální popup (viz dxLookup).
+// =====================================================================
+
+@use "../base/variables" as *;
+
+.qpx-lookup {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: $qpx-gap-sm;
+    min-height: 34px;
+    padding: 4px 6px;
+    font-size: $qpx-font-size;
+    border-radius: $qpx-radius;
+    cursor: pointer;
+    background: var(--qpx-bg, #fff);
+    color: var(--qpx-text, #333);
+    transition: border-color $qpx-transition, box-shadow $qpx-transition;
+
+    @include qpx-focus-ring;
+
+    &.qpx-hidden { display: none; }
+}
+
+// -- stylingMode varianty (stejná koncepce jako u dxLookup editorů) --
+.qpx-lookup.qpx-lookup-mode-outlined {
+    border: 1px solid var(--qpx-border, #ccc);
+    &:hover { border-color: var(--qpx-accent, #337ab7); }
+}
+.qpx-lookup.qpx-lookup-mode-filled {
+    border: 1px solid transparent;
+    background: var(--qpx-surface, #f0f0f0);
+    &:hover { background: var(--qpx-hover, #e6e6e6); }
+}
+.qpx-lookup.qpx-lookup-mode-underlined {
+    border: none;
+    border-bottom: 1px solid var(--qpx-border, #ccc);
+    border-radius: 0;
+    background: transparent;
+    &:hover { border-bottom-color: var(--qpx-accent, #337ab7); }
+}
+
+.qpx-lookup-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: inherit;
+    font-size: inherit;
+    font-family: inherit;
+    padding: 2px 2px;
+    cursor: pointer;
+}
+
+.qpx-lookup-clear,
+.qpx-lookup-arrow {
+    flex: 0 0 auto;
+    cursor: pointer;
+    color: var(--qpx-text-muted, #767676);
+    line-height: 1;
+    padding: 2px 4px;
+    user-select: none;
+}
+.qpx-lookup-clear:hover,
+.qpx-lookup-arrow:hover { color: var(--qpx-text, #333); }
+
+// -- overlay + vystředěný popup ------------------------------------------
+.qpx-lookup-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: $qpx-z-popup;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--qpx-shadow, rgba(0, 0, 0, .35));
+}
+
+.qpx-lookup-popup {
+    @include qpx-popup-surface;
+    position: relative;
+    z-index: auto;
+    display: flex;
+    flex-direction: column;
+    width: 340px;
+    max-width: 92vw;
+    height: 420px;
+    max-height: 82vh;
+    overflow: hidden;
+    box-shadow: 0 10px 34px var(--qpx-shadow, rgba(0, 0, 0, .28));
+}
+
+.qpx-lookup-header {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--qpx-border, #ccc);
+    font-weight: 600;
+}
+
+.qpx-lookup-close {
+    cursor: pointer;
+    color: var(--qpx-text-muted, #767676);
+    padding: 2px 4px;
+    line-height: 1;
+
+    &:hover { color: var(--qpx-text, #333); }
+}
+
+.qpx-lookup-search-wrap {
+    flex: 0 0 auto;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--qpx-border, #ccc);
+}
+
+.qpx-lookup-search {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid var(--qpx-border, #ccc);
+    border-radius: $qpx-radius-sm;
+    padding: 6px 8px;
+    font-size: inherit;
+    font-family: inherit;
+    color: inherit;
+    background: var(--qpx-bg, #fff);
+    outline: none;
+
+    &:focus { border-color: var(--qpx-accent, #337ab7); }
+}
+
+.qpx-lookup-list {
+    flex: 1 1 auto;
+    overflow-y: auto;
+}
+
+.qpx-lookup-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 14px;
+    cursor: pointer;
+
+    &:hover,
+    &.qpx-state-highlighted { background: var(--qpx-hover, #eceff1); }
+
+    &.qpx-state-selected {
+        background: var(--qpx-selected, #e3f0fb);
+        font-weight: 600;
+    }
+}
+
+.qpx-lookup-item-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.qpx-lookup-nodata {
+    padding: 20px 14px;
+    text-align: center;
+    color: var(--qpx-text-muted, #767676);
+    font-size: 12px;
+}
+
+.qpx-lookup-footer {
+    flex: 0 0 auto;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 10px 14px;
+    border-top: 1px solid var(--qpx-border, #ccc);
+}
+
+.qpx-lookup-btn {
+    border: 1px solid var(--qpx-border, #ccc);
+    border-radius: $qpx-radius-sm;
+    background: var(--qpx-bg, #fff);
+    color: inherit;
+    font: inherit;
+    padding: $qpx-padding-btn-y $qpx-padding-btn-x;
+    cursor: pointer;
+
+    &:hover { border-color: var(--qpx-accent, #337ab7); }
+}
+
+.qpx-lookup-btn-done {
+    background: var(--qpx-accent, #337ab7);
+    border-color: var(--qpx-accent, #337ab7);
+    color: var(--qpx-accent-contrast, #fff);
+
+    &:hover { opacity: .92; }
+}
+
+// -- stavy ---------------------------------------------------------------
+.qpx-lookup.qpx-state-disabled {
+    @include qpx-disabled-state;
+    cursor: not-allowed;
+}
+.qpx-lookup.qpx-state-readonly {
+    cursor: default;
+}

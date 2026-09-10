@@ -1,0 +1,74 @@
+// =====================================================================
+// qpx - widgets/_toolbar.scss
+// Styly pro komponentu "qpToolBar" (qpx.toolbar.js).
+// =====================================================================
+
+@use "../base/variables" as *;
+
+.qpx-toolbar {
+    display: flex;
+    align-items: center;
+    height: $qpx-toolbar-height;
+    padding: 0 $qpx-toolbar-padding-x;
+    background: var(--qpx-surface, #f8f9fb);
+    border-bottom: 1px solid var(--qpx-border, #d3d9df);
+    color: var(--qpx-text, #333);
+    font-size: $qpx-font-size;
+}
+
+.qpx-toolbar-content {
+    display: flex;
+    align-items: center;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    gap: $qpx-gap-md;
+}
+
+.qpx-toolbar-section {
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+    gap: $qpx-gap-sm;
+}
+.qpx-toolbar-center { flex: 0 1 auto; margin: 0 auto; }
+.qpx-toolbar-item { display: flex; align-items: center; flex: 0 0 auto; }
+
+.qpx-toolbar-overflow-btn {
+    flex: 0 0 auto;
+    margin-left: $qpx-gap-sm;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: $qpx-radius;
+    cursor: pointer;
+    color: var(--qpx-text, #333);
+    font-size: 16px;
+
+    &:hover { background: var(--qpx-hover, #eceff1); }
+}
+
+// přetečené menu (rozšiřuje sdílený .qpx-popup-list z _popup-list.scss)
+.qpx-toolbar-menu.qpx-popup-list { min-width: 200px; padding: $qpx-gap-sm 0; }
+
+.qpx-toolbar-menu .qpx-toolbar-item.qpx-in-menu {
+    display: flex;
+    width: 100%;
+    padding: 7px 14px;
+    border-radius: 0;
+
+    &:hover { background: var(--qpx-hover, #eee); }
+
+    // uvnitř menu se komponenty zobrazí bez vlastního rámečku tlačítka
+    > .qpx-button {
+        border: none;
+        background: transparent;
+        padding: 0;
+        width: 100%;
+        justify-content: flex-start;
+    }
+}

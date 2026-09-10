@@ -1,0 +1,190 @@
+/*!
+ * qpx - qpRibbon styles
+ * Stylování vychází z MS Office 365 online verzí (Word/Excel/PowerPoint
+ * Online) - kompaktní pás karet, drobné písmo ($qpx-font-size-sm = 10px),
+ * ploché ikonové položky bez rámečku, které se zvýrazní až při hoveru.
+ *
+ * Sjednoceno se zbytkem frameworku: žádné soukromé barevné proměnné,
+ * jen sdílené CSS proměnné (--qpx-*) z scss/themes/_light.scss a
+ * scss/themes/_dark.scss - qpRibbon proto (stejně jako qpTextBox/
+ * qpToolBar/qpTabView/qpDataGrid) žádné theme sám nevynucuje a normálně
+ * zdědí motiv z okolí (viz qpx.setTheme()).
+ */
+
+@use "../base/variables" as *;
+
+.qpx-ribbon {
+    display: flex;
+    flex-direction: column;
+    font-family: $qpx-font-family;
+    font-size: $qpx-font-size-sm;
+    width: 100%;
+    background: var(--qpx-bg, #fff);
+    color: var(--qpx-text, #333);
+    user-select: none;
+
+    &.qpx-hidden { display: none; }
+
+    &.qpx-state-disabled {
+        @include qpx-disabled-state;
+    }
+
+    // --- pruh karet ------------------------------------------------------
+    .qpx-ribbon-tabstrip {
+        display: flex;
+        align-items: stretch;
+        flex: 0 0 auto;
+        height: $qpx-ribbon-tab-height;
+        background: var(--qpx-surface, #f8f9fb);
+        border-bottom: 1px solid var(--qpx-border, #ccc);
+    }
+
+    .qpx-ribbon-tabs {
+        display: flex;
+        align-items: stretch;
+        flex: 1 1 auto;
+        overflow: auto;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        &::-webkit-scrollbar { display: none; }
+    }
+
+    .qpx-ribbon-tab {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 $qpx-ribbon-tab-padding-x;
+        white-space: nowrap;
+        cursor: pointer;
+        color: var(--qpx-text-muted, #767676);
+        border-bottom: 2px solid transparent;
+        outline: none;
+        transition: background $qpx-transition, color $qpx-transition;
+
+        &:hover { background: var(--qpx-hover, #eceff1); color: var(--qpx-text, #333); }
+        &:focus-visible { outline: 2px solid var(--qpx-accent, #337ab7); outline-offset: -2px; }
+
+        &.qpx-state-selected {
+            background: var(--qpx-bg, #fff);
+            color: var(--qpx-accent, #337ab7);
+            font-weight: 600;
+            border-bottom-color: var(--qpx-accent, #337ab7);
+        }
+
+        &.qpx-state-disabled {
+            @include qpx-disabled-state;
+        }
+    }
+
+    .qpx-ribbon-collapse-btn {
+        flex: 0 0 auto;
+        width: $qpx-ribbon-tab-height;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        color: var(--qpx-text-muted, #767676);
+        font-size: 9px;
+        line-height: 1;
+        border-left: 1px solid var(--qpx-border, #ccc);
+        outline: none;
+
+        &:hover { background: var(--qpx-hover, #eceff1); color: var(--qpx-text, #333); }
+        &:focus-visible { outline: 2px solid var(--qpx-accent, #337ab7); outline-offset: -2px; }
+    }
+
+    // --- panely (obsah aktivní karty) -------------------------------------
+    .qpx-ribbon-panels {
+        flex: 0 0 auto;
+    }
+
+    &.qpx-ribbon-collapsed .qpx-ribbon-panels {
+        display: none;
+    }
+
+    .qpx-ribbon-panel {
+        display: flex;
+        align-items: stretch;
+        height: $qpx-ribbon-panel-height;
+        overflow-x: auto;
+        overflow-y: hidden;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        &::-webkit-scrollbar { display: none; }
+    }
+
+    // --- skupina ----------------------------------------------------------
+    .qpx-ribbon-group {
+        display: flex;
+        flex-direction: column;
+        flex: 0 0 auto;
+        padding: 4px $qpx-ribbon-group-padding-x 2px;
+        border-right: 1px solid var(--qpx-border, #ccc);
+
+        &:last-child { border-right: none; }
+    }
+
+    .qpx-ribbon-group-items {
+        display: flex;
+        // položky jsou standardně svisle na střed (jako textbox/numberbox/
+        // dropdownbutton v Office ribbonu) - přes celou výšku skupiny se
+        // roztáhne jen "velké" tlačítko (viz .qpx-ribbon-item-large níže),
+        // které si to samo vyžádá přes align-self.
+        align-items: center;
+        flex: 1 1 auto;
+        gap: $qpx-gap-xs;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .qpx-ribbon-group-title {
+        flex: 0 0 auto;
+        text-align: center;
+        color: var(--qpx-text-muted, #767676);
+        font-size: $qpx-font-size-sm;
+        padding-top: 3px;
+        white-space: nowrap;
+    }
+
+    // --- položky ------------------------------------------------------
+    .qpx-ribbon-item {
+        display: flex;
+        align-items: center;
+    }
+
+    // svislý "mini-sloupec" pro sousední item.stack:true položky
+    // (qpRibbonButton size:"small") - jejich SOUČET výšek je záměrně
+    // odměřený (viz $qpx-ribbon-btn-small-height v base/_variables.scss)
+    // tak, aby se 3 tlačítka vešla do dostupné výšky skupiny beze zbytku.
+    .qpx-ribbon-item-stack {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: $qpx-ribbon-btn-stack-gap;
+    }
+
+    // velké tlačítko (jako Office "Vložit") - jediná položka, která se
+    // roztahuje přes celou výšku skupiny; samotné vykreslení (ikona
+    // nahoře, text pod ní) už řeší widget qpRibbonButton (size:"large").
+    .qpx-ribbon-item-large {
+        align-self: stretch;
+        height: auto;
+    }
+
+    .qpx-ribbon-separator {
+        align-self: stretch;
+        width: 1px;
+        margin: 2px 6px;
+        background: var(--qpx-border, #ccc);
+    }
+
+    .qpx-ribbon-item .qpx-checkbox {
+        font-size: $qpx-font-size-sm;
+    }
+
+    .qpx-ribbon-item .qpx-textbox,
+    .qpx-ribbon-item .qpx-numberbox {
+        min-height: $qpx-ribbon-item-height;
+        font-size: $qpx-font-size-sm;
+    }
+}

@@ -1,0 +1,37 @@
+// =====================================================================
+// qpx - widgets/_dropdownbutton.scss
+// Styly pro komponentu "dropDownButton" (qpx.dropdownbutton.js).
+// Kořenový element má zároveň třídu .qpx-button (sdílí s ním "type"/
+// "stylingMode" vzhled), tento soubor doplňuje jen to, co je pro
+// dropDownButton specifické.
+// =====================================================================
+
+@use "../base/variables" as *;
+
+.qpx-dropdownbutton { padding-right: 10px; }
+
+.qpx-dropdownbutton-main {
+    display: inline-flex;
+    align-items: center;
+    gap: $qpx-gap-sm;
+}
+
+.qpx-dropdownbutton-arrow {
+    margin-left: $qpx-gap-sm;
+    font-size: 10px;
+    color: var(--qpx-text-muted, #767676);
+}
+
+.qpx-dropdownbutton-split .qpx-dropdownbutton-arrow {
+    padding-left: $qpx-gap-md;
+    margin-left: $qpx-gap-md;
+    border-left: 1px solid var(--qpx-border, #ccc);
+}
+
+.qpx-dropdownbutton.qpx-state-disabled { @include qpx-disabled-state; }
+
+// Poznámka: menu dropDownButtonu vizuálně sdílí .qpx-popup-list
+// (viz widgets/_popup-list.scss) - třídu si widget přidává v DOMu sám
+// (qpx.dropdownbutton.js: "uqp-popup-list uqp-dropdownbutton-menu" ->
+// po přejmenování "qpx-popup-list qpx-dropdownbutton-menu"), takže zde
+// už žádné další pravidlo není potřeba.

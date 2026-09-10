@@ -1,0 +1,313 @@
+/*!
+ * qpx - qpDataGrid styles
+ * Vzhledově se blíží DevExtreme dxDataGrid (light / dark).
+ *
+ * Sjednoceno se zbytkem frameworku: barvy už nejsou soukromé
+ * 
+ * blocích, ale sdílené CSS proměnné (--qpx-*) z scss/themes/_light.scss
+ * a scss/themes/_dark.scss - přesně stejný mechanismus jako u
+ * qpTextBox/qpToolBar/qpCheckBox atd. Díky tomu:
+ *  - qpDataGrid už nepotřebuje mít theme třídu přímo na sobě - stačí ji
+ *    mít na libovolném předkovi (typicky <body>, viz qpx.setTheme()),
+ *  - v qpx.datagrid.js proto NENÍ potřeba žádná speciální "theme" logika.
+ *
+ * Rozměrové (netématizované) tokeny byly přesunuty do
+ * base/_variables.scss pod jednotný prefix "$qpx-grid-*".
+ */
+
+@use "../base/variables" as *;
+
+// -----------------------------------------------------------------------
+// Layout / struktura
+// -----------------------------------------------------------------------
+.qpx-datagrid {
+    display: flex;
+    flex-direction: column;
+    font-family: $qpx-font-family;
+    font-size: $qpx-font-size;
+    width: 100%;
+    position: relative;
+    outline: none;
+
+    background: var(--qpx-bg, #fff);
+    color: var(--qpx-text, #333);
+    border: 1px solid var(--qpx-border, #ccc);
+    border-radius: $qpx-radius;
+
+    &.qpx-hidden { display: none; }
+    &.qpx-state-disabled { pointer-events: none; opacity: 0.6; }
+
+    // --- toolbar (search panel) -----------------------------------------
+    .qpx-datagrid-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        padding: 8px 10px;
+        gap: $qpx-gap-md;
+        flex: 0 0 auto;
+        border-bottom: 1px solid var(--qpx-border, #ccc);
+    }
+    .qpx-datagrid-search {
+        display: flex;
+        align-items: center;
+        gap: $qpx-gap-sm;
+        border: 1px solid var(--qpx-border, #ccc);
+        border-radius: $qpx-radius;
+        padding: 4px 8px;
+    }
+    .qpx-datagrid-search-icon {
+        width: 14px; height: 14px;
+        border-radius: 50%;
+        border: 2px solid currentColor;
+        opacity: 0.6;
+        flex: 0 0 auto;
+    }
+    .qpx-datagrid-search-input {
+        border: none;
+        outline: none;
+        background: transparent;
+        font-size: inherit;
+        color: inherit;
+        width: 100%;
+    }
+
+    // --- scroll + tabulka ------------------------------------------------
+    .qpx-datagrid-scroll {
+        overflow: auto;
+        width: 100%;
+        flex: 1 1 auto;
+        min-height: 0;
+        position: relative;
+    }
+
+    .qpx-datagrid-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+    }
+
+    th, td {
+        box-sizing: border-box;
+        padding: 0 $qpx-grid-cell-padding-x;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        vertical-align: middle;
+        border-bottom: 1px solid var(--qpx-border, #ccc);
+        border-right: 1px solid var(--qpx-border, #ccc);
+    }
+    th:last-child, td:last-child { border-right: none; }
+
+    &.qpx-datagrid-wordwrap {
+        th, td { white-space: normal; word-break: break-word; }
+    }
+
+    .qpx-datagrid-header-cell {
+        height: $qpx-grid-header-height;
+        font-weight: 600;
+        position: relative;
+        user-select: none;
+        color: var(--qpx-text, #333);
+    }
+    .qpx-datagrid-header-caption { vertical-align: middle; }
+
+    // hlavička zůstává viditelná při vertikálním scrollování řádků —
+    // sticky se dává jak na thead, tak přímo na th (kvůli kompatibilitě
+    // napříč prohlížeči)
+    thead {
+        position: sticky;
+        top: 0;
+        z-index: 3;
+        background: var(--qpx-surface, #fafafa);
+    }
+    .qpx-datagrid-header-row th,
+    .qpx-datagrid-filter-row th {
+        position: sticky;
+        top: 0;
+        z-index: 3;
+        background: var(--qpx-surface, #fafafa);
+    }
+    .qpx-datagrid-filter-row th {
+        top: $qpx-grid-header-height;
+        z-index: 2;
+    }
+
+    .qpx-datagrid-sortable { cursor: pointer; }
+    .qpx-datagrid-sortable:hover { background: var(--qpx-hover, rgba(0, 0, 0, .03)); }
+
+    .qpx-datagrid-sort-indicator {
+        display: inline-block;
+        width: 0; height: 0;
+        margin-left: 6px;
+        border-left: 4px solid transparent;
+        border-right: 4px solid transparent;
+        vertical-align: middle;
+    }
+    .qpx-datagrid-sort-asc, .qpx-datagrid-sort-desc { color: var(--qpx-accent, #337ab7); }
+    .qpx-datagrid-sort-asc .qpx-datagrid-sort-indicator { border-bottom: 5px solid currentColor; }
+    .qpx-datagrid-sort-desc .qpx-datagrid-sort-indicator { border-top: 5px solid currentColor; }
+    .qpx-datagrid-sort-order {
+        font-size: 10px;
+        margin-left: 3px;
+        vertical-align: super;
+        opacity: 0.7;
+    }
+
+    .qpx-datagrid-resize-handle {
+        position: absolute;
+        top: 0; right: 0; bottom: 0;
+        width: 6px;
+        cursor: col-resize;
+        z-index: 2;
+        &:hover { background: var(--qpx-accent, #337ab7); }
+    }
+
+    .qpx-datagrid-row {
+        height: $qpx-grid-row-height;
+        cursor: default;
+        &:hover { background: var(--qpx-hover, rgba(0, 0, 0, .03)); }
+        &.qpx-state-selected { background: var(--qpx-selected, #e3f0fb); }
+    }
+    .qpx-datagrid-row-alt { background: var(--qpx-alt-row-bg, #f7f8fa); }
+    .qpx-datagrid-row-edit { background: var(--qpx-edit-bg, #fff8e1); }
+
+    .qpx-datagrid-cell-select,
+    .qpx-datagrid-header-cell.qpx-datagrid-cell-select {
+        width: 36px;
+        text-align: center;
+        white-space: nowrap;
+    }
+    .qpx-datagrid-select-checkbox,
+    .qpx-datagrid-select-all {
+        width: $qpx-grid-checkbox-size;
+        height: $qpx-grid-checkbox-size;
+        cursor: pointer;
+    }
+
+    .qpx-datagrid-cell-adaptive,
+    .qpx-datagrid-header-cell.qpx-datagrid-cell-adaptive {
+        width: 40px;
+        text-align: center;
+    }
+    .qpx-datagrid-adaptive-btn {
+        cursor: pointer;
+        padding: 2px 8px;
+        border-radius: $qpx-radius;
+        display: inline-block;
+        &:hover { background: var(--qpx-hover, rgba(0, 0, 0, .03)); }
+    }
+
+    .qpx-datagrid-cell-command,
+    .qpx-datagrid-header-cell.qpx-datagrid-cell-command {
+        width: 76px;
+        text-align: right;
+        white-space: nowrap;
+    }
+    .qpx-datagrid-cmd-btn {
+        cursor: pointer;
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: $qpx-radius;
+        margin-left: 2px;
+        &:hover { background: var(--qpx-hover, rgba(0, 0, 0, .03)); }
+    }
+    .qpx-datagrid-save-btn { color: var(--qpx-success, #2e9e5b); }
+    .qpx-datagrid-cancel-btn, .qpx-datagrid-delete-btn { color: var(--qpx-danger, #d9534f); }
+    .qpx-datagrid-edit-btn { color: var(--qpx-accent, #337ab7); }
+    .qpx-datagrid-add-btn { color: var(--qpx-accent, #337ab7); font-weight: 700; }
+
+    .qpx-datagrid-edit-input {
+        width: 100%;
+        box-sizing: border-box;
+        border-radius: $qpx-radius-sm;
+        padding: 4px 6px;
+        font-size: inherit;
+        font-family: inherit;
+        border: 1px solid var(--qpx-border, #ccc);
+        background: var(--qpx-bg, #fff);
+        color: var(--qpx-text, #333);
+    }
+
+    .qpx-datagrid-detail-cell { padding: 0; }
+    .qpx-datagrid-accordion {
+        display: grid;
+        grid-template-columns: max-content 1fr;
+        column-gap: 16px;
+        row-gap: 0;
+        padding: 8px 12px;
+        background: var(--qpx-alt-row-bg, #f7f8fa);
+    }
+    // display:contents "rozpustí" box položky — header a content se tak
+    // stanou přímými buňkami gridu výše a zarovnají se do dvou sloupců
+    .qpx-datagrid-accordion-item { display: contents; }
+    .qpx-datagrid-accordion-header,
+    .qpx-datagrid-accordion-content {
+        border-bottom: 1px dashed var(--qpx-border, #ccc);
+        padding: 6px 0;
+    }
+    .qpx-datagrid-accordion-item:last-child {
+        .qpx-datagrid-accordion-header,
+        .qpx-datagrid-accordion-content { border-bottom: none; }
+    }
+    .qpx-datagrid-accordion-header {
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    .qpx-datagrid-accordion-content {
+        min-width: 0;
+        overflow-wrap: break-word;
+    }
+
+    .qpx-datagrid-no-data-cell {
+        text-align: center;
+        padding: 24px;
+        white-space: normal;
+        color: var(--qpx-text-muted, #767676);
+    }
+
+    // --- pager -------------------------------------------------------
+    .qpx-datagrid-pager {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+        padding: 8px 12px;
+        font-size: 12px;
+        flex: 0 0 auto;
+        border-top: 1px solid var(--qpx-border, #ccc);
+        color: var(--qpx-text-muted, #767676);
+    }
+    .qpx-datagrid-pager-sizes,
+    .qpx-datagrid-pager-nav,
+    .qpx-datagrid-pager-pages {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+    }
+    .qpx-datagrid-pager-size,
+    .qpx-datagrid-pager-btn,
+    .qpx-datagrid-pager-page {
+        cursor: pointer;
+        padding: 3px 8px;
+        border-radius: $qpx-radius;
+        min-width: 22px;
+        text-align: center;
+        &:hover { background: var(--qpx-hover, rgba(0, 0, 0, .03)); }
+    }
+    .qpx-datagrid-pager-btn.qpx-state-disabled { cursor: not-allowed; opacity: 0.4; }
+    .qpx-datagrid-pager-page.qpx-state-selected,
+    .qpx-datagrid-pager-size.qpx-state-selected {
+        background: var(--qpx-accent, #337ab7);
+        color: var(--qpx-accent-contrast, #fff);
+    }
+    .qpx-datagrid-pager-btn:not(.qpx-state-disabled):hover { background: var(--qpx-hover, rgba(0, 0, 0, .03)); }
+
+    // --- borders / row lines / column lines varianty ------------------
+    &.qpx-datagrid-no-borders {
+        border: none !important;
+        th, td { border-color: transparent; }
+    }
+    &.qpx-datagrid-no-row-lines .qpx-datagrid-row { border-bottom: none !important; }
+    &.qpx-datagrid-no-column-lines th, &.qpx-datagrid-no-column-lines td { border-right: none !important; }
+}

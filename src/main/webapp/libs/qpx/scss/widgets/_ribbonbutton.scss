@@ -1,0 +1,87 @@
+/*!
+ * qpx - qpRibbonButton styles
+ * Ploché, bezrámečkové tlačítko pro položky qpRibbon (styl Office 365
+ * online) - zvýrazní se až při hoveru. Dvě varianty:
+ *   .qpx-ribbonbutton-large - ikona nahoře, text pod ní, přes celou
+ *     výšku skupiny (šířka $qpx-ribbon-item-large-width).
+ *   .qpx-ribbonbutton-small - ikona + text v jedné řádce, přesná výška
+ *     $qpx-ribbon-btn-small-height (aby se 3 tlačítka pod sebou vešla
+ *     do skupiny beze zbytku - viz item.stack v qpx.ribbon.js).
+ */
+
+@use "../base/variables" as *;
+
+.qpx-ribbonbutton {
+    display: inline-flex;
+    align-items: center;
+    box-sizing: border-box;
+    cursor: pointer;
+    outline: none;
+    border-radius: $qpx-radius-sm;
+    background: transparent;
+    color: var(--qpx-text, #333);
+    font-family: inherit;
+    font-size: $qpx-font-size-sm;
+    transition: background $qpx-transition;
+    overflow: hidden;
+
+    &:hover:not(.qpx-state-disabled) {
+        background: var(--qpx-hover, #eceff1);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--qpx-accent, #337ab7);
+        outline-offset: -2px;
+    }
+
+    &.qpx-state-disabled {
+        @include qpx-disabled-state;
+    }
+
+    &.qpx-hidden { display: none; }
+
+    .qpx-icon {
+        flex: 0 0 auto;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+    }
+
+    .qpx-ribbonbutton-text {
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+}
+
+// --- velké tlačítko: ikona nahoře, text pod ní, přes celou výšku skupiny ---
+.qpx-ribbonbutton-large {
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    width: $qpx-ribbon-item-large-width;
+    height: 100%;
+    padding: 4px 2px;
+    text-align: center;
+    white-space: normal;
+
+    .qpx-icon { font-size: $qpx-ribbon-icon-size-large; }
+    .qpx-ribbonbutton-text {
+        font-size: $qpx-font-size-sm;
+        line-height: 1.15;
+        white-space: normal;
+    }
+}
+
+// --- malé (kompaktní) tlačítko: ikona + text v jedné řádce ------------------
+.qpx-ribbonbutton-small {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: $qpx-gap-xs;
+    height: $qpx-ribbon-btn-small-height;
+    padding: 0 6px;
+    white-space: nowrap;
+
+    .qpx-icon { font-size: $qpx-ribbon-icon-size; }
+    .qpx-ribbonbutton-text { font-size: $qpx-font-size-sm; }
+}

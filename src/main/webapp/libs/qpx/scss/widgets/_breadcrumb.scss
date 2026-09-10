@@ -1,0 +1,164 @@
+// =====================================================================
+// qpx - widgets/_breadcrumb.scss
+// qpBreadcrumb - navigační "drobečková" stezka, inspirovaná KendoUI
+// Breadcrumb a Fluent2 Breadcrumb: kompaktní odkazy oddělené šipkou,
+// poslední (aktivní) položka jako nezvýrazněný nezakliknutelný text,
+// automatické sbalení prostředních položek do "..." při nedostatku
+// místa v kontejneru (viz qpx.breadcrumb.js - _collapseToFit).
+// =====================================================================
+
+@use "../base/variables" as *;
+
+.qpx-breadcrumb {
+    display: block;
+    width: 100%;
+    overflow: hidden; // nutné pro měření/sbalování přetečení
+    font-size: $qpx-font-size;
+    color: var(--qpx-text, #333);
+
+    &.qpx-state-disabled {
+        @include qpx-disabled-state;
+    }
+}
+
+.qpx-breadcrumb-list {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.qpx-breadcrumb-item {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    min-width: 0;
+}
+
+.qpx-breadcrumb-item-icon-only .qpx-breadcrumb-text {
+    display: none;
+}
+
+.qpx-breadcrumb-link {
+    display: inline-flex;
+    align-items: center;
+    gap: $qpx-gap-xs;
+    max-width: 220px;
+    padding: 2px $qpx-gap-xs;
+    border-radius: $qpx-radius-sm;
+    color: var(--qpx-text-muted, #767676);
+    text-decoration: none;
+    cursor: pointer;
+    transition: color $qpx-transition, background-color $qpx-transition;
+
+    @include qpx-focus-ring;
+
+    &:hover {
+        color: var(--qpx-accent, #337ab7);
+        background-color: var(--qpx-hover, #eceff1);
+    }
+}
+
+.qpx-breadcrumb-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.qpx-breadcrumb-icon {
+    font-size: .95em;
+    flex: 0 0 auto;
+}
+
+// aktuální (poslední/aktivní) položka - zvýrazněný text, ale bez odkazu
+.qpx-breadcrumb-item-current .qpx-breadcrumb-link {
+    color: var(--qpx-text, #333);
+    font-weight: 600;
+    cursor: default;
+    pointer-events: none;
+
+    &:hover {
+        background: none;
+    }
+}
+
+.qpx-breadcrumb-item-disabled .qpx-breadcrumb-link {
+    @include qpx-disabled-state;
+    color: var(--qpx-text-muted, #767676);
+}
+
+.qpx-breadcrumb-separator {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    margin: 0 2px;
+    color: var(--qpx-text-muted, #767676);
+    font-size: .8em;
+
+    i { display: block; }
+}
+
+// "..." tlačítko pro sbalené (přetečené) prostřední položky
+.qpx-breadcrumb-ellipsis {
+    position: relative;
+}
+
+.qpx-breadcrumb-ellipsis-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 $qpx-gap-xs;
+    border: 0;
+    border-radius: $qpx-radius-sm;
+    background: none;
+    color: var(--qpx-text-muted, #767676);
+    font: inherit;
+    line-height: 1;
+    cursor: pointer;
+    transition: color $qpx-transition, background-color $qpx-transition;
+
+    @include qpx-focus-ring;
+
+    &:hover {
+        color: var(--qpx-accent, #337ab7);
+        background-color: var(--qpx-hover, #eceff1);
+    }
+}
+
+.qpx-breadcrumb-popup {
+    @include qpx-popup-surface;
+    top: 100%;
+    left: 0;
+    margin: 4px 0 0;
+    padding: $qpx-gap-xs 0;
+    min-width: 160px;
+    max-width: 280px;
+    list-style: none;
+    white-space: normal;
+}
+
+.qpx-breadcrumb-popup-item {
+    a {
+        display: flex;
+        align-items: center;
+        gap: $qpx-gap-sm;
+        padding: $qpx-gap-sm $qpx-gap-md;
+        color: var(--qpx-text, #333);
+        text-decoration: none;
+        cursor: pointer;
+        transition: background-color $qpx-transition;
+
+        &:hover {
+            background-color: var(--qpx-hover, #eceff1);
+        }
+    }
+
+    &.qpx-breadcrumb-item-disabled a {
+        @include qpx-disabled-state;
+    }
+}

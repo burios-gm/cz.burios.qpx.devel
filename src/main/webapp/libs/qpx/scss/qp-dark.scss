@@ -1,0 +1,52 @@
+// =====================================================================
+// qpx - dark.scss
+// Samostatný build jednoho tématu ("dark") - obdoba dx.dark.css
+// z DevExtreme. Do stránky se vloží tento jediný soubor, přepínací
+// třída na <body> není potřeba.
+//
+//   npm run build-dark   ->  themes/jquery.qpx.dark.css
+// =====================================================================
+
+@use "base/normalize";
+@use "themes/dark" as dark;
+
+@use "widgets/layout";
+@use "widgets/template";
+@use "widgets/button";
+@use "widgets/buttongroup";
+@use "widgets/popup-list";
+@use "widgets/dropdownbutton";
+@use "widgets/switch";
+@use "widgets/tagbox";
+@use "widgets/autocomplete";
+@use "widgets/selectbox";
+@use "widgets/dropdownbox";
+@use "widgets/lookup";
+@use "widgets/colorpicker";
+@use "widgets/datepicker";
+@use "widgets/checkbox";
+@use "widgets/breadcrumb";
+@use "widgets/scrollview";
+@use "widgets/grouplist";
+@use "widgets/flexlayout";
+@use "widgets/gridlayout";
+@use "widgets/numberbox";
+@use "widgets/textbox";
+@use "widgets/toolbar";
+@use "widgets/tabview";
+@use "widgets/treeview";
+@use "widgets/propertygrid";
+@use "widgets/datagrid";
+@use "widgets/syntaxeditor";
+@use "widgets/ribbonbutton";
+@use "widgets/ribbondropdownbutton";
+@use "widgets/ribbon";
+
+@use "widgets/icons";
+
+:root,
+.qpx-view,
+.qpx-theme-dark {
+	@include dark.qpx-theme-vars;
+	color-scheme: dark;
+}
