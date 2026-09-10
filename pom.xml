@@ -12,6 +12,7 @@
 		<maven.compiler.target>17</maven.compiler.target>
 		<failOnMissingWebXml>false</failOnMissingWebXml>
 		<spring.version>6.1.21</spring.version>
+		<junit.version>5.10.2</junit.version>
 	</properties>
 
 	<dependencies>
@@ -73,16 +74,11 @@
 		</dependency>
 		<dependency>
 			<groupId>commons-io</groupId>
-			<artifactId>commons-io</artifactId>
 			<version>2.15.1</version>
+			<artifactId>commons-io</artifactId>
 		</dependency>
 		
 		<!-- Builder -->
-		<dependency>
-			<groupId>commons-io</groupId>
-			<artifactId>commons-io</artifactId>
-			<version>2.6</version>
-		</dependency>
 		<dependency>
 			<groupId>io.bit3</groupId>
 			<artifactId>jsass</artifactId>
@@ -92,24 +88,15 @@
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-api</artifactId>
 			<version>2.0.17</version>
-		</dependency>		
-		<!--
-		<dependency>
-			<groupId>com.yahoo.platform.yui</groupId>
-			<artifactId>yuicompressor</artifactId>
-			<version>2.4.8</version>
 		</dependency>
+
+		<!-- Tests -->
 		<dependency>
-			<groupId>com.github.sommeri</groupId>
-			<artifactId>less4j</artifactId>
-			<version>1.17.2</version>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter</artifactId>
+			<version>${junit.version}</version>
+			<scope>test</scope>
 		</dependency>
-		<dependency>
-			<groupId>com.atlassian.commonmark</groupId>
-			<artifactId>commonmark</artifactId>
-			<version>0.13.1</version>
-		</dependency>
-		 -->
 	</dependencies>
 	
 	<build>
@@ -121,6 +108,11 @@
 					<failOnMissingWebXml>false</failOnMissingWebXml>
 					<warName>devel</warName>
 				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<version>3.2.5</version>
 			</plugin>
 		</plugins>
 	</build>
