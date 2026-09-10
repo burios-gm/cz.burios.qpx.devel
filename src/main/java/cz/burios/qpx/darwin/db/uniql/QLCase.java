@@ -19,12 +19,12 @@ public class QLCase extends QLExpr {
 
     public QLCase() {}
     public QLCase(QLExpr operand) { this.operand = operand; }
-    public QLCase when(QLExpr condition, Object result) { whens.add(new When(condition, QLExprs.expr(result))); return this; }
+    public QLCase when(Object condition, Object result) {
+        whens.add(new When(QLExpr.toExpr(condition), QLExpr.toExpr(result)));
+        return this;
+    }
     public QLCase elseValue(Object value) { otherwise = QLExprs.expr(value); return this; }
     public QLCase as(String alias) { this.alias = alias; return this; }
 
-    @Override public void accept(QLVisitor visitor) {
-        if (visitor instanceof QLSql sql) sql.visit(this);
-        else throw new UnsupportedOperationException("Visitor does not support QLCase");
-    }
+    @Override public void accept(QLVisitor visitor) { visitor.visit(this); }
 }
