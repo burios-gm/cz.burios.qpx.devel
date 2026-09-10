@@ -17,5 +17,9 @@ public class QLSelect extends QLExpr {
     public String alias;
 
     public QLSelect as(String alias) { this.alias = alias; return this; }
+
+    /** Render this SELECT statement as SQL with '?' parameter placeholders. */
+    public String toSQL() { return QLSql.render(this).sql(); }
+
     @Override public void accept(QLVisitor visitor) { visitor.visit(this); }
 }
