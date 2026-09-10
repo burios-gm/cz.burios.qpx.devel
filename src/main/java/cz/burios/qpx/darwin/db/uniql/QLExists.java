@@ -10,8 +10,5 @@ public class QLExists extends QLExpr {
     public QLExists(QLSelect select) { this.subSelect = new QLSubSelect(select); }
     public QLExists not() { this.negated = true; return this; }
 
-    @Override public void accept(QLVisitor visitor) {
-        if (visitor instanceof QLSql sql) sql.visit(this);
-        else throw new UnsupportedOperationException("Visitor does not support QLExists");
-    }
+    @Override public void accept(QLVisitor visitor) { visitor.visit(this); }
 }
