@@ -8,6 +8,8 @@ public interface QLVisitor {
     void visit(QLWhere expr);
     void visit(QLCondition expr);
     void visit(QLValue expr);
+    void visit(QLFunction expr);
+    void visit(QLSubSelect expr);
     void visit(QLGroupBy expr);
     void visit(QLOrderBy expr);
     void visit(QLLimit expr);
