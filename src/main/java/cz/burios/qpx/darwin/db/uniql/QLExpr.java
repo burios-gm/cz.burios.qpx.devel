@@ -8,6 +8,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
     @JsonSubTypes.Type(value = QLSelect.class, name = "select"),
     @JsonSubTypes.Type(value = QLColumn.class, name = "column"),
     @JsonSubTypes.Type(value = QLTable.class, name = "table"),
+    @JsonSubTypes.Type(value = QLSchema.class, name = "schema"),
     @JsonSubTypes.Type(value = QLJoin.class, name = "join"),
     @JsonSubTypes.Type(value = QLWhere.class, name = "where"),
     @JsonSubTypes.Type(value = QLCondition.class, name = "condition"),
@@ -29,14 +30,12 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 })
 public abstract class QLExpr {
     public abstract void accept(QLVisitor visitor);
-
     public QLExpression add(Object x) { return binary("+", x); }
     public QLExpression sub(Object x) { return binary("-", x); }
     public QLExpression mul(Object x) { return binary("*", x); }
     public QLExpression div(Object x) { return binary("/", x); }
     public QLExpression mod(Object x) { return binary("%", x); }
     public QLBrackets brackets() { return new QLBrackets(this); }
-
     public QLCondition eq(Object x) { return condition("=", x); }
     public QLCondition ne(Object x) { return condition("<>", x); }
     public QLCondition gt(Object x) { return condition(">", x); }
@@ -50,10 +49,7 @@ public abstract class QLExpr {
     public QLIsNull isNotNull() { return new QLIsNull(this, true); }
     public QLCondition and(Object x) { return new QLLogical("AND", this, QLExprs.expr(x)); }
     public QLCondition or(Object x) { return new QLLogical("OR", this, QLExprs.expr(x)); }
-
-    /** Negates this expression. Predicate implementations may return themselves. */
     public QLExpr not() { return new QLLogical("NOT", this); }
-
     protected QLExpression binary(String op, Object x) { return new QLExpression(this, op, QLExprs.expr(x)); }
     protected QLCondition condition(String op, Object x) { return new QLCondition(this, op, QLExprs.expr(x)); }
     public static QLExpr toExpr(Object value) { return QLExprs.expr(value); }
@@ -61,7 +57,5 @@ public abstract class QLExpr {
 
 final class QLExprs {
     private QLExprs() {}
-    static QLExpr expr(Object value) {
-        return value instanceof QLExpr ? (QLExpr) value : new QLValue(value);
-    }
+    static QLExpr expr(Object value) { return value instanceof QLExpr ? (QLExpr) value : new QLValue(value); }
 }
