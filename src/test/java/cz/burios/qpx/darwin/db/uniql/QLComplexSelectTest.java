@@ -24,7 +24,7 @@ public class QLComplexSelectTest {
         QLSql.Result result = select(col("x.user_id"), col("x.total"))
                 .from(subSelect(sub).as("x"))
                 .where(col("x.total").gt(1000))
-                .build().sql();
+                .sql();
 
         assertEquals(
                 "SELECT x.user_id, x.total FROM (SELECT user_id, SUM(amount) AS total FROM orders GROUP BY user_id) AS x "
@@ -42,7 +42,7 @@ public class QLComplexSelectTest {
         QLSql.Result result = select(col("u.id"), col("o.cnt"))
                 .from(table("users").as("u"))
                 .leftJoin(subSelect(sub).as("o"), col("o.user_id").eq(col("u.id")))
-                .build().sql();
+                .sql();
 
         assertEquals(
                 "SELECT u.id, o.cnt FROM users AS u LEFT JOIN "
@@ -57,7 +57,7 @@ public class QLComplexSelectTest {
                 fn("COUNT", col("id")).as("count_all"),
                 fn("COUNT", col("email")).distinct().as("count_emails"))
                 .from("users")
-                .build().sql();
+                .sql();
 
         assertEquals(
                 "SELECT COUNT(id) AS count_all, COUNT(DISTINCT email) AS count_emails FROM users",
@@ -73,7 +73,7 @@ public class QLComplexSelectTest {
                         .elseValue("other")
                         .as("status_label"))
                 .from("users")
-                .build().sql();
+                .sql();
 
         assertEquals(
                 "SELECT CASE WHEN (status = ?) THEN ? WHEN (status = ?) THEN ? ELSE ? END AS status_label FROM users",
@@ -99,7 +99,7 @@ public class QLComplexSelectTest {
                 .where(col("c.deleted_at").isNull().and(col("c.id").in(1, 2, 3)))
                 .orderByDesc(fn("COALESCE", col("t.total"), val(0)))
                 .limit(10)
-                .build().sql();
+                .sql();
 
         assertEquals(
                 "SELECT c.id, c.name, COALESCE(t.total, ?) AS total, "
