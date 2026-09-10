@@ -16,8 +16,6 @@ public interface QLVisitor {
     void visit(QLIn expr);
     void visit(QLBetween expr);
     void visit(QLIsNull expr);
-    void visit(QLExists expr);
-    void visit(QLCase expr);
     void visit(QLGroupBy expr);
     void visit(QLOrderBy expr);
     void visit(QLLimit expr);
