@@ -20,7 +20,7 @@ public class QLExpressionTest {
         QLSql.Result result = select(col("id"))
                 .from("users")
                 .where(col("status").in("ACTIVE", "PENDING"))
-                .build().toSQLResult();
+                .sql();
 
         assertEquals("SELECT id FROM users WHERE (status IN (?, ?))", result.sql());
         assertEquals(List.of("ACTIVE", "PENDING"), result.parameters());
@@ -28,7 +28,7 @@ public class QLExpressionTest {
         result = select(col("id"))
                 .from("users")
                 .where(col("status").in("DELETED", "BLOCKED").not())
-                .build().toSQLResult();
+                .sql();
 
         assertEquals("SELECT id FROM users WHERE (status NOT IN (?, ?))", result.sql());
         assertEquals(List.of("DELETED", "BLOCKED"), result.parameters());
@@ -43,7 +43,7 @@ public class QLExpressionTest {
         QLSql.Result result = select(col("id"))
                 .from("users")
                 .where(col("id").in().select(sub))
-                .build().toSQLResult();
+                .sql();
 
         assertEquals(
                 "SELECT id FROM users WHERE (id IN (SELECT user_id FROM orders WHERE (total > ?)))",
@@ -56,7 +56,7 @@ public class QLExpressionTest {
                 .from("users")
                 .where(col("age").between(18, 65))
                 .and(col("deleted_at").isNull())
-                .build().toSQLResult();
+                .sql();
 
         assertEquals(
                 "SELECT id FROM users WHERE (age BETWEEN ? AND ?) AND (deleted_at IS NULL)",
@@ -67,7 +67,7 @@ public class QLExpressionTest {
                 .from("users")
                 .where(col("age").between(18, 65).not())
                 .and(col("deleted_at").isNotNull())
-                .build().toSQLResult();
+                .sql();
 
         assertEquals(
                 "SELECT id FROM users WHERE (age NOT BETWEEN ? AND ?) AND (deleted_at IS NOT NULL)",
@@ -83,7 +83,7 @@ public class QLExpressionTest {
         QLSql.Result result = select(col("id"))
                 .from("users")
                 .where(active.and(premium.or(trial)).not())
-                .build().toSQLResult();
+                .sql();
 
         assertEquals(
                 "SELECT id FROM users WHERE (NOT ((active = ?) AND ((plan = ?) OR (trial = ?))))",
@@ -100,7 +100,7 @@ public class QLExpressionTest {
         QLSql.Result result = select(col("id"))
                 .from(table("users"))
                 .where(exists(sub))
-                .build().toSQLResult();
+                .sql();
 
         assertEquals(
                 "SELECT id FROM users WHERE (EXISTS (SELECT id FROM orders WHERE (orders.user_id = users.id)))",
@@ -110,7 +110,7 @@ public class QLExpressionTest {
         result = select(col("id"))
                 .from("users")
                 .where(exists(sub).not())
-                .build().toSQLResult();
+                .sql();
 
         assertEquals(
                 "SELECT id FROM users WHERE (NOT EXISTS (SELECT id FROM orders WHERE (orders.user_id = users.id)))",
@@ -120,7 +120,7 @@ public class QLExpressionTest {
 
     static void rejectsEmptyIn() {
         assertThrows(IllegalStateException.class, () ->
-                select(col("id")).from("users").where(col("id").in()).build().toSQLResult());
+                select(col("id")).from("users").where(col("id").in()).sql());
     }
 
     private static void assertEquals(Object expected, Object actual) {
