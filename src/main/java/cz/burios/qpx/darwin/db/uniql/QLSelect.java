@@ -5,13 +5,16 @@ import java.util.List;
 
 public class QLSelect extends QLExpr {
     public boolean distinct;
-    public List<QLColumn> columns = new ArrayList<>();
-    public QLTable from;
+    public List<QLExpr> columns = new ArrayList<>();
+    public QLExpr from;
     public List<QLJoin> joins = new ArrayList<>();
     public QLWhere where;
     public QLGroupBy groupBy;
     public QLOrderBy orderBy;
     public QLLimit limit;
     public QLOffset offset;
-    public void accept(QLVisitor visitor) { visitor.visit(this); }
+    public String alias;
+
+    public QLSelect as(String alias) { this.alias = alias; return this; }
+    @Override public void accept(QLVisitor visitor) { visitor.visit(this); }
 }
