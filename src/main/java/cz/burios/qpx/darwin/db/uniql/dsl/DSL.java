@@ -46,12 +46,9 @@ public final class DSL {
     public static QLCondition le(QLExpr left,Object right){return left.le(right);}
     public static QLCondition like(QLExpr left,Object right){return left.like(right);}
 
-    public static Insert insertInto(String table){return new Insert(table);}
-    public static Insert insertInto(QLSchema schema){return new Insert(schema);}
-    public static Update update(String table){return new Update(table);}
-    public static Update update(QLSchema schema){return new Update(schema);}
-    public static Delete deleteFrom(String table){return new Delete(table);}
-    public static Delete deleteFrom(QLSchema schema){return new Delete(schema);}
+    public static Insert insertInto(String table){return new Insert(table);} public static Insert insertInto(QLSchema schema){return new Insert(schema);}
+    public static Update update(String table){return new Update(table);} public static Update update(QLSchema schema){return new Update(schema);}
+    public static Delete deleteFrom(String table){return new Delete(table);} public static Delete deleteFrom(QLSchema schema){return new Delete(schema);}
 
     public static int insert(Connection c,String table,BasicRecord r)throws SQLException{requireRecord(r);return insertInto(table).row(r).execute(c);}
     public static int update(Connection c,String table,BasicRecord r,String keyColumn)throws SQLException{requireRecord(r);requireKeyColumn(keyColumn);Object key=r.get(keyColumn);if(key==null)throw new IllegalArgumentException("record key must not be null: "+keyColumn);Update u=update(table).where(col(keyColumn).eq(key));for(Map.Entry<String,Object> e:r.entrySet())if(!keyColumn.equals(e.getKey()))u.set(e.getKey(),e.getValue());return u.execute(c);}
@@ -62,14 +59,22 @@ public final class DSL {
     public static final class Select {
         private final QLSelect select=new QLSelect();
         public Select column(QLExpr e){select.columns.add(e);return this;} public Select column(String n){return column(col(n));}
-        public Select columns(QLExpr... e){if(e!=null)select.columns.addAll(Arrays.asList(e));return this;} public Select distinct(){select.distinct=true;return this;}
+        public Select column(String n,String alias){return column(col(n,alias));}
+        public Select column(QLSchema s){return column(col(s));}
+        public Select columns(QLExpr... e){if(e!=null)select.columns.addAll(Arrays.asList(e));return this;} public Select columns(String... e){if(e!=null)for(String n:e)column(n);return this;}
+        public Select distinct(){select.distinct=true;return this;}
         public Select from(QLExpr s){select.from=s;return this;} public Select from(String n){return from(table(n));} public Select from(QLSchema s){return from(table(s));}
+        public Select from(QLSelect s){return from(new QLSubSelect(s));} public Select from(QLSelect s,String alias){return from(new QLSubSelect(s,alias));}
         public Select join(QLExpr s,QLExpr on){return join("INNER",s,on);} public Select join(String t,QLExpr s,QLExpr on){select.joins.add(new QLJoin(t,s,on));return this;}
-        public Select leftJoin(QLExpr s,QLExpr on){return join("LEFT",s,on);} public Select rightJoin(QLExpr s,QLExpr on){return join("RIGHT",s,on);} public Select fullJoin(QLExpr s,QLExpr on){return join("FULL",s,on);} public Select crossJoin(QLExpr s){return join("CROSS",s,null);}
-        public Select where(QLExpr e){if(select.where==null)select.where=new QLWhere();select.where.add(e);return this;} public Select and(QLExpr e){return where(e);}
-        public Select groupBy(QLExpr... e){if(select.groupBy==null)select.groupBy=new QLGroupBy();if(e!=null)select.groupBy.expressions.addAll(Arrays.asList(e));return this;}
-        public Select having(QLExpr e){select.having=e;return this;} public Select orderBy(QLExpr e,String d){if(select.orderBy==null)select.orderBy=new QLOrderBy();select.orderBy.add(e,d);return this;}
-        public Select orderByAsc(QLExpr e){return orderBy(e,"ASC");} public Select orderByDesc(QLExpr e){return orderBy(e,"DESC");} public Select limit(int v){select.limit=new QLLimit(v);return this;} public Select offset(int v){select.offset=new QLOffset(v);return this;}
+        public Select join(String table,QLExpr on){return join("INNER",table(table),on);} public Select join(String type,String table,QLExpr on){return join(type,table(table),on);}
+        public Select join(QLSelect s,String alias,QLExpr on){return join("INNER",new QLSubSelect(s,alias),on);} public Select join(String type,QLSelect s,String alias,QLExpr on){return join(type,new QLSubSelect(s,alias),on);}
+        public Select leftJoin(QLExpr s,QLExpr on){return join("LEFT",s,on);} public Select leftJoin(String s,QLExpr on){return join("LEFT",table(s),on);} public Select rightJoin(QLExpr s,QLExpr on){return join("RIGHT",s,on);} public Select rightJoin(String s,QLExpr on){return join("RIGHT",table(s),on);}
+        public Select fullJoin(QLExpr s,QLExpr on){return join("FULL",s,on);} public Select fullJoin(String s,QLExpr on){return join("FULL",table(s),on);} public Select crossJoin(QLExpr s){return join("CROSS",s,null);} public Select crossJoin(String s){return crossJoin(table(s));}
+        public Select where(QLExpr e){if(select.where==null)select.where=new QLWhere();select.where.add(e);return this;} public Select and(QLExpr e){return where(e);} public Select or(QLExpr e){return where(e);}
+        public Select groupBy(QLExpr... e){if(select.groupBy==null)select.groupBy=new QLGroupBy();if(e!=null)select.groupBy.expressions.addAll(Arrays.asList(e));return this;} public Select groupBy(String... e){if(e!=null)for(String n:e)groupBy(col(n));return this;}
+        public Select having(QLExpr e){select.having=e;return this;} public Select orderBy(QLExpr e,String d){if(select.orderBy==null)select.orderBy=new QLOrderBy();select.orderBy.add(e,d);return this;} public Select orderBy(String n,String d){return orderBy(col(n),d);}
+        public Select orderByAsc(QLExpr e){return orderBy(e,"ASC");} public Select orderByDesc(QLExpr e){return orderBy(e,"DESC");} public Select orderByAsc(String e){return orderByAsc(col(e));} public Select orderByDesc(String e){return orderByDesc(col(e));}
+        public Select limit(int v){select.limit=new QLLimit(v);return this;} public Select offset(int v){select.offset=new QLOffset(v);return this;}
         public QLSelect build(){return select;} public QLSql.Result sql(){return QLSql.render(select);}
         public List<BasicRecord> list(Connection c)throws SQLException{return execute(c,BasicRecord.class);} public <T extends BasicRecord>List<T> list(Connection c,Class<T> t)throws SQLException{return execute(c,t);}
         public <T extends BasicRecord>T one(Connection c,Class<T> t)throws SQLException{List<T> r=execute(c,t);if(r.isEmpty())return null;if(r.size()>1)throw new SQLException("Expected one row, got "+r.size());return r.get(0);}
