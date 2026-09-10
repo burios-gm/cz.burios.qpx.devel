@@ -20,5 +20,9 @@ public class QLInsert extends QLStatement {
         row.forEach((k,v) -> r.put(k, QLExpr.toExpr(v)));
         rows.add(r); return this;
     }
+
+    /** Render this INSERT statement as SQL with '?' parameter placeholders. */
+    public String toSQL() { return QLSql.render(this).sql(); }
+
     @Override public void accept(QLVisitor visitor) { visitor.visit(this); }
 }
