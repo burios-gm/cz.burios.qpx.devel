@@ -22,4 +22,7 @@ public interface QLVisitor {
     void visit(QLOrderBy expr);
     void visit(QLLimit expr);
     void visit(QLOffset expr);
+    void visit(QLInsert expr);
+    void visit(QLUpdate expr);
+    void visit(QLDelete expr);
 }
