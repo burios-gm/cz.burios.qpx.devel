@@ -1,5 +1,7 @@
 package cz.burios.qpx.darwin.db.dao;
 
+import cz.burios.qpx.darwin.db.uniql.QLSql;
+
 /** Simple executable smoke test; kept dependency-free. */
 public final class QLJsonTest {
     public static void main(String[] args) throws Exception {
