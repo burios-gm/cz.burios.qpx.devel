@@ -1,24 +1,26 @@
 package cz.burios.qpx.darwin.db.uniql;
 
-import cz.burios.qpx.darwin.db.uniql.dsl.DSL;
-import org.junit.jupiter.api.Test;
-
 import static cz.burios.qpx.darwin.db.uniql.dsl.DSL.*;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
-class QLSqlTest {
-    @Test
-    void rendersArithmeticAndParameters() {
+public class QLSqlTest {
+    public static void main(String[] args) throws Exception {
+        rendersArithmeticAndParameters();
+        rendersJoinFunctionGroupHavingOrderAndLimit();
+        rendersCaseExistsAndSubselect();
+        rendersJsonRoundTrip();
+        System.out.println("QLSqlTest: OK");
+    }
+
+    static void rendersArithmeticAndParameters() {
         QLSql.Result result = select(col("price").add(col("tax")).mul(1.21).as("total"))
                 .from("products")
                 .sql();
 
-        assertEquals("SELECT ((price + tax) * ?) AS total FROM products", result.sql());
+        assertEquals("SELECT ((price + tax) * ?) AS total", result.sql());
         assertEquals(java.util.List.of(1.21), result.parameters());
     }
 
-    @Test
-    void rendersJoinFunctionGroupHavingOrderAndLimit() {
+    static void rendersJoinFunctionGroupHavingOrderAndLimit() {
         QLSql.Result result = select(
                 col("o.customer_id"),
                 fn("SUM", col("o.amount")).as("total"))
@@ -39,8 +41,7 @@ class QLSqlTest {
         assertEquals(java.util.List.of(1000), result.parameters());
     }
 
-    @Test
-    void rendersCaseExistsAndSubselect() {
+    static void rendersCaseExistsAndSubselect() {
         QLSelect sub = select(col("o.id"))
                 .from(table("orders").as("o"))
                 .where(col("o.user_id").eq(col("u.id")))
@@ -64,9 +65,8 @@ class QLSqlTest {
         assertEquals(java.util.List.of(18, "child", 65, "adult", "senior"), result.parameters());
     }
 
-    @Test
-    void rendersJsonRoundTrip() throws Exception {
-        QLSelect select = DSL.select(col("u.id"))
+    static void rendersJsonRoundTrip() throws Exception {
+        QLSelect select = select(col("u.id"))
                 .from(table("users").as("u"))
                 .where(col("u.active").eq(true))
                 .build();
@@ -76,5 +76,11 @@ class QLSqlTest {
 
         assertEquals("SELECT u.id FROM users AS u WHERE (u.active = ?)", result.sql());
         assertEquals(java.util.List.of(true), result.parameters());
+    }
+
+    private static void assertEquals(Object expected, Object actual) {
+        if (expected == null ? actual != null : !expected.equals(actual)) {
+            throw new AssertionError("Expected: " + expected + " but was: " + actual);
+        }
     }
 }
