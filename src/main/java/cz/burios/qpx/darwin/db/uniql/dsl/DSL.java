@@ -1,5 +1,7 @@
 package cz.burios.qpx.darwin.db.uniql.dsl;
 
+import cz.burios.qpx.darwin.db.model.BasicRecord;
+import cz.burios.qpx.darwin.db.metadata.QLRecordMetadata;
 import cz.burios.qpx.darwin.db.uniql.*;
 import java.sql.*;
 import java.util.Arrays;
