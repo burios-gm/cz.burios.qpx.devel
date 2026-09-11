@@ -16,7 +16,8 @@ public final class QLSubSelectJoinTest {
                 col("STORE_ID"),
                 fn("SUM", col("AMOUNT")).as("TOTAL")
         ).from(table("depo_cz.sales"))
-         .groupBy(col("STORE_ID"));
+         .groupBy(col("STORE_ID"))
+         .build();
 
         QLSql.Result r = select(
                 col("s.NAME"),
