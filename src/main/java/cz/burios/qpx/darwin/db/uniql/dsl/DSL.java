@@ -13,6 +13,7 @@ public final class DSL {
     public static Select select(QLExpr... expressions) { Select b=new Select(); if(expressions!=null)b.select.columns.addAll(Arrays.asList(expressions)); return b; }
     public static Select select(String... columnNames) { Select b=new Select(); if(columnNames!=null)for(String n:columnNames)b.select.columns.add(col(n)); return b; }
     public static Select select() { return new Select(); }
+    public static Select select(Class<? extends BasicRecord> type) { return select().from(QLRecordMetadata.table(type)); }
 
     public static QLSchema schema(String database, String table) { return new QLSchema(database, table); }
     public static QLSchema schema(String database, String table, String column) { return new QLSchema(database, table, column); }
@@ -47,12 +48,22 @@ public final class DSL {
     public static QLCondition like(QLExpr left,Object right){return left.like(right);}
 
     public static Insert insertInto(String table){return new Insert(table);} public static Insert insertInto(QLSchema schema){return new Insert(schema);}
+    public static Insert insertInto(Class<? extends BasicRecord> type){return new Insert(QLRecordMetadata.table(type));}
     public static Update update(String table){return new Update(table);} public static Update update(QLSchema schema){return new Update(schema);}
+    public static Update update(Class<? extends BasicRecord> type){return new Update(QLRecordMetadata.table(type));}
     public static Delete deleteFrom(String table){return new Delete(table);} public static Delete deleteFrom(QLSchema schema){return new Delete(schema);}
+    public static Delete deleteFrom(Class<? extends BasicRecord> type){return new Delete(QLRecordMetadata.table(type));}
 
     public static int insert(Connection c,String table,BasicRecord r)throws SQLException{requireRecord(r);return insertInto(table).row(r).execute(c);}
+    public static int insert(Connection c,BasicRecord r)throws SQLException{requireRecord(r);return insert(c,QLRecordMetadata.table(recordType(r)),r);}
     public static int update(Connection c,String table,BasicRecord r,String keyColumn)throws SQLException{requireRecord(r);requireKeyColumn(keyColumn);Object key=r.get(keyColumn);if(key==null)throw new IllegalArgumentException("record key must not be null: "+keyColumn);Update u=update(table).where(col(keyColumn).eq(key));for(Map.Entry<String,Object> e:r.entrySet())if(!keyColumn.equals(e.getKey()))u.set(e.getKey(),e.getValue());return u.execute(c);}
+    public static int update(Connection c,BasicRecord r)throws SQLException{requireRecord(r);Class<? extends BasicRecord> type=recordType(r);String id=QLRecordMetadata.idColumn(type);return update(c,QLRecordMetadata.table(type),r,id);}
     public static int delete(Connection c,String table,BasicRecord r,String keyColumn)throws SQLException{requireRecord(r);requireKeyColumn(keyColumn);Object key=r.get(keyColumn);if(key==null)throw new IllegalArgumentException("record key must not be null: "+keyColumn);return deleteFrom(table).where(col(keyColumn).eq(key)).execute(c);}
+    public static int delete(Connection c,BasicRecord r)throws SQLException{requireRecord(r);Class<? extends BasicRecord> type=recordType(r);String id=QLRecordMetadata.idColumn(type);return delete(c,QLRecordMetadata.table(type),r,id);}
+    private static Class<? extends BasicRecord> recordType(BasicRecord r){
+        @SuppressWarnings("unchecked") Class<? extends BasicRecord> type=(Class<? extends BasicRecord>)r.getClass();
+        return type;
+    }
     private static void requireRecord(BasicRecord r){if(r==null)throw new IllegalArgumentException("record must not be null");}
     private static void requireKeyColumn(String c){if(c==null||c.isBlank())throw new IllegalArgumentException("keyColumn must not be blank");}
 
@@ -64,6 +75,7 @@ public final class DSL {
         public Select columns(QLExpr... e){if(e!=null)select.columns.addAll(Arrays.asList(e));return this;} public Select columns(String... e){if(e!=null)for(String n:e)column(n);return this;}
         public Select distinct(){select.distinct=true;return this;}
         public Select from(QLExpr s){select.from=s;return this;} public Select from(String n){return from(table(n));} public Select from(QLSchema s){return from(table(s));}
+        public Select from(Class<? extends BasicRecord> type){return from(QLRecordMetadata.table(type));}
         public Select from(QLSelect s){return from(new QLSubSelect(s));} public Select from(QLSelect s,String alias){return from(new QLSubSelect(s,alias));}
         public Select join(QLExpr s,QLExpr on){return join("INNER",s,on);} public Select join(String t,QLExpr s,QLExpr on){select.joins.add(new QLJoin(t,s,on));return this;}
         public Select join(String table,QLExpr on){return join("INNER",table(table),on);} public Select join(String type,String table,QLExpr on){return join(type,table(table),on);}
