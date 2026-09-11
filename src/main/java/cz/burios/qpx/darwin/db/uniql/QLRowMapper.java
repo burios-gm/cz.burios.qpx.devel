@@ -1,5 +1,6 @@
 package cz.burios.qpx.darwin.db.uniql;
 
+import cz.burios.qpx.darwin.db.model.BasicRecord;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -47,9 +48,6 @@ public final class QLRowMapper {
 
     private static List<Field> mappedFields(Class<?> type) {
         List<Field> fields = new ArrayList<>();
-        // BasicRecord extends LinkedHashMap. Never walk beyond BasicRecord,
-        // otherwise reflection reaches JDK implementation fields such as
-        // LinkedHashMap.accessOrder and Java 17 module access is denied.
         for (Class<?> c = type; c != null && c != BasicRecord.class && c != Object.class; c = c.getSuperclass()) {
             for (Field f : c.getDeclaredFields()) {
                 int modifiers = f.getModifiers();
@@ -77,20 +75,15 @@ public final class QLRowMapper {
     }
 
     private static boolean hasAnnotation(Field field, String className) {
-        for (var annotation : field.getAnnotations())
-            if (annotation.annotationType().getName().equals(className)) return true;
+        for (var annotation : field.getAnnotations()) if (annotation.annotationType().getName().equals(className)) return true;
         return false;
     }
 
     private static String annotationValue(Field field, String annotationClass, String member) {
         for (var annotation : field.getAnnotations()) {
             if (!annotation.annotationType().getName().equals(annotationClass)) continue;
-            try {
-                Object value = annotation.annotationType().getMethod(member).invoke(annotation);
-                return value == null ? null : value.toString();
-            } catch (ReflectiveOperationException ignored) {
-                return null;
-            }
+            try { return String.valueOf(annotation.annotationType().getMethod(member).invoke(annotation)); }
+            catch (ReflectiveOperationException ignored) { return null; }
         }
         return null;
     }
