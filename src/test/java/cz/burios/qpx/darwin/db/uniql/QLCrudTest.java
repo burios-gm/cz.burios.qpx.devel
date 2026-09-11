@@ -2,6 +2,8 @@ package cz.burios.qpx.darwin.db.uniql;
 
 import static cz.burios.qpx.darwin.db.uniql.dsl.DSL.*;
 
+import cz.burios.qpx.darwin.db.model.BasicRecord;
+import cz.burios.qpx.darwin.db.metadata.QLRecordMetadata;
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -52,26 +54,14 @@ public final class QLCrudTest {
     @Entity
     @Table(name = "store")
     public static class StoreRecord extends BasicRecord {
-        @Id
-        @Column(name = "STORE_ID")
-        public int storeId;
-
-        @Column(name = "STORE_NAME")
-        public String storeName;
-
-        @Column(name = "ACTIVE")
-        public boolean active;
-
-        @Column(name = "PRICE")
-        public BigDecimal price;
-
-        @Column(name = "CREATED")
-        public LocalDate created;
+        @Id @Column(name = "STORE_ID") public int storeId;
+        @Column(name = "STORE_NAME") public String storeName;
+        @Column(name = "ACTIVE") public boolean active;
+        @Column(name = "PRICE") public BigDecimal price;
+        @Column(name = "CREATED") public LocalDate created;
     }
 
     private static void assertEquals(Object expected, Object actual) {
-        if (expected == null ? actual != null : !expected.equals(actual)) {
-            throw new AssertionError("Expected: " + expected + " but was: " + actual);
-        }
+        if (expected == null ? actual != null : !expected.equals(actual)) throw new AssertionError("Expected: " + expected + " but was: " + actual);
     }
 }
