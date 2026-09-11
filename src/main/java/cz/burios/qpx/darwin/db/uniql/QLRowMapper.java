@@ -47,7 +47,10 @@ public final class QLRowMapper {
 
     private static List<Field> mappedFields(Class<?> type) {
         List<Field> fields = new ArrayList<>();
-        for (Class<?> c = type; c != null && c != Object.class; c = c.getSuperclass()) {
+        // BasicRecord extends LinkedHashMap. Never walk beyond BasicRecord,
+        // otherwise reflection reaches JDK implementation fields such as
+        // LinkedHashMap.accessOrder and Java 17 module access is denied.
+        for (Class<?> c = type; c != null && c != BasicRecord.class && c != Object.class; c = c.getSuperclass()) {
             for (Field f : c.getDeclaredFields()) {
                 int modifiers = f.getModifiers();
                 if (Modifier.isStatic(modifiers) || Modifier.isTransient(modifiers)) continue;
