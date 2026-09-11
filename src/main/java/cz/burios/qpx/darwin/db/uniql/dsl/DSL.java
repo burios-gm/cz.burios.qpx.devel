@@ -1,7 +1,10 @@
 package cz.burios.qpx.darwin.db.uniql.dsl;
 
 import cz.burios.qpx.darwin.db.model.BasicRecord;
+import cz.burios.qpx.darwin.db.model.DynamicRecord;
+import cz.burios.qpx.darwin.db.metadata.ColumnMetaData;
 import cz.burios.qpx.darwin.db.metadata.QLRecordMetadata;
+import cz.burios.qpx.darwin.db.metadata.TableMetaData;
 import cz.burios.qpx.darwin.db.uniql.*;
 import java.sql.*;
 import java.util.Arrays;
@@ -57,15 +60,43 @@ public final class DSL {
     public static Delete deleteFrom(Class<? extends BasicRecord> type){return new Delete(QLRecordMetadata.table(type));}
 
     public static int insert(Connection c,String table,BasicRecord r)throws SQLException{requireRecord(r);return insertInto(table).row(r).execute(c);}
-    public static int insert(Connection c,BasicRecord r)throws SQLException{requireRecord(r);return insert(c,QLRecordMetadata.table(recordType(r)),r);}
-    public static int update(Connection c,String table,BasicRecord r,String keyColumn)throws SQLException{requireRecord(r);requireKeyColumn(keyColumn);Object key=r.get(keyColumn);if(key==null)throw new IllegalArgumentException("record key must not be null: "+keyColumn);Update u=update(table).where(col(keyColumn).eq(key));for(Map.Entry<String,Object> e:r.entrySet())if(!keyColumn.equals(e.getKey()))u.set(e.getKey(),e.getValue());return u.execute(c);}
-    public static int update(Connection c,BasicRecord r)throws SQLException{requireRecord(r);Class<? extends BasicRecord> type=recordType(r);String id=QLRecordMetadata.idColumn(type);return update(c,QLRecordMetadata.table(type),r,id);}
-    public static int delete(Connection c,String table,BasicRecord r,String keyColumn)throws SQLException{requireRecord(r);requireKeyColumn(keyColumn);Object key=r.get(keyColumn);if(key==null)throw new IllegalArgumentException("record key must not be null: "+keyColumn);return deleteFrom(table).where(col(keyColumn).eq(key)).execute(c);}
-    public static int delete(Connection c,BasicRecord r)throws SQLException{requireRecord(r);Class<? extends BasicRecord> type=recordType(r);String id=QLRecordMetadata.idColumn(type);return delete(c,QLRecordMetadata.table(type),r,id);}
-    private static Class<? extends BasicRecord> recordType(BasicRecord r){
-        @SuppressWarnings("unchecked") Class<? extends BasicRecord> type=(Class<? extends BasicRecord>)r.getClass();
-        return type;
+    public static int insert(Connection c,BasicRecord r)throws SQLException{
+        requireRecord(r);
+        if (r instanceof DynamicRecord d) return insertDynamic(c,d);
+        return insert(c,QLRecordMetadata.table(recordType(r)),r);
     }
+    public static int update(Connection c,String table,BasicRecord r,String keyColumn)throws SQLException{requireRecord(r);requireKeyColumn(keyColumn);Object key=r.get(keyColumn);if(key==null)throw new IllegalArgumentException("record key must not be null: "+keyColumn);Update u=update(table).where(col(keyColumn).eq(key));for(Map.Entry<String,Object> e:r.entrySet())if(!keyColumn.equals(e.getKey()))u.set(e.getKey(),e.getValue());return u.execute(c);}
+    public static int update(Connection c,BasicRecord r)throws SQLException{
+        requireRecord(r);
+        if (r instanceof DynamicRecord d) return updateDynamic(c,d);
+        Class<? extends BasicRecord> type=recordType(r);String id=QLRecordMetadata.idColumn(type);return update(c,QLRecordMetadata.table(type),r,id);
+    }
+    public static int delete(Connection c,String table,BasicRecord r,String keyColumn)throws SQLException{requireRecord(r);requireKeyColumn(keyColumn);Object key=r.get(keyColumn);if(key==null)throw new IllegalArgumentException("record key must not be null: "+keyColumn);return deleteFrom(table).where(col(keyColumn).eq(key)).execute(c);}
+    public static int delete(Connection c,BasicRecord r)throws SQLException{
+        requireRecord(r);
+        if (r instanceof DynamicRecord d) return deleteDynamic(c,d);
+        Class<? extends BasicRecord> type=recordType(r);String id=QLRecordMetadata.idColumn(type);return delete(c,QLRecordMetadata.table(type),r,id);
+    }
+    private static int insertDynamic(Connection c, DynamicRecord r)throws SQLException{
+        TableMetaData meta=requireMetadata(r); validateColumns(meta,r); return insertInto(meta.qualifiedName()).row(r).execute(c);
+    }
+    private static int updateDynamic(Connection c, DynamicRecord r)throws SQLException{
+        TableMetaData meta=requireMetadata(r); validateColumns(meta,r); ColumnMetaData key=meta.primaryKey();
+        if(key==null)throw new IllegalArgumentException("No primary key metadata for "+meta.qualifiedName());
+        Object value=r.get(key.name); if(value==null)throw new IllegalArgumentException("record key must not be null: "+key.name);
+        Update u=update(meta.qualifiedName()).where(col(key.name).eq(value));
+        for(Map.Entry<String,Object> e:r.entrySet())if(!key.name.equalsIgnoreCase(e.getKey()))u.set(e.getKey(),e.getValue());
+        return u.execute(c);
+    }
+    private static int deleteDynamic(Connection c, DynamicRecord r)throws SQLException{
+        TableMetaData meta=requireMetadata(r); validateColumns(meta,r); ColumnMetaData key=meta.primaryKey();
+        if(key==null)throw new IllegalArgumentException("No primary key metadata for "+meta.qualifiedName());
+        Object value=r.get(key.name); if(value==null)throw new IllegalArgumentException("record key must not be null: "+key.name);
+        return deleteFrom(meta.qualifiedName()).where(col(key.name).eq(value)).execute(c);
+    }
+    private static TableMetaData requireMetadata(DynamicRecord r){if(r.getTableMetaData()==null)throw new IllegalArgumentException("DynamicRecord table metadata must not be null");return r.getTableMetaData();}
+    private static void validateColumns(TableMetaData meta,BasicRecord r){for(String name:r.keySet())if(meta.column(name)==null)throw new IllegalArgumentException("Unknown column '"+name+"' for table "+meta.qualifiedName());}
+    private static Class<? extends BasicRecord> recordType(BasicRecord r){@SuppressWarnings("unchecked") Class<? extends BasicRecord> type=(Class<? extends BasicRecord>)r.getClass();return type;}
     private static void requireRecord(BasicRecord r){if(r==null)throw new IllegalArgumentException("record must not be null");}
     private static void requireKeyColumn(String c){if(c==null||c.isBlank())throw new IllegalArgumentException("keyColumn must not be blank");}
 
