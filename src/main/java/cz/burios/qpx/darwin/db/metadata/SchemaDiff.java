@@ -97,16 +97,20 @@ public final class SchemaDiff {
         }
     }
 
-    private static boolean sameColumn(ColumnMetaData a, ColumnMetaData b) {
-        return equalIgnoreCase(a.type, b.type)
-                && a.jdbcType == b.jdbcType
-                && equalIgnoreCase(a.jdbcTypeName, b.jdbcTypeName)
-                && a.length == b.length
-                && a.precision == b.precision
-                && a.scale == b.scale
-                && a.nullable == b.nullable
-                && a.autoIncrement == b.autoIncrement
-                && equal(a.defaultValue, b.defaultValue);
+    /** Compares only properties explicitly represented by the desired metadata. */
+    private static boolean sameColumn(ColumnMetaData actual, ColumnMetaData desired) {
+        if (desired.type != null && !desired.type.isBlank()
+                && !equalIgnoreCase(actual.type, desired.type)) return false;
+        if (desired.jdbcType != 0 && actual.jdbcType != desired.jdbcType) return false;
+        if (desired.jdbcTypeName != null && !desired.jdbcTypeName.isBlank()
+                && !equalIgnoreCase(actual.jdbcTypeName, desired.jdbcTypeName)) return false;
+        if (desired.length > 0 && actual.length != desired.length) return false;
+        if (desired.precision > 0 && actual.precision != desired.precision) return false;
+        if (desired.scale != 0 && actual.scale != desired.scale) return false;
+        if (actual.nullable != desired.nullable) return false;
+        if (desired.autoIncrement && !actual.autoIncrement) return false;
+        if (desired.defaultValue != null && !equal(actual.defaultValue, desired.defaultValue)) return false;
+        return true;
     }
 
     private static Map<String, TableMetaData> indexTables(Map<String, TableMetaData> source) {
