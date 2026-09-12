@@ -4,7 +4,10 @@ package cz.burios.qpx.darwin.db.metadata;
 public class ColumnMetaData {
     public String name;
     public String label;
+    /** Native SQL type name, primarily describing an existing database column. */
     public String type;
+    /** Database-independent logical type used for desired schema definitions. */
+    public ColumnType logicalType;
     public int jdbcType;
     public String jdbcTypeName;
     public int length;
@@ -25,6 +28,7 @@ public class ColumnMetaData {
     public ColumnMetaData name(String value) { this.name = value; return this; }
     public ColumnMetaData label(String value) { this.label = value; return this; }
     public ColumnMetaData type(String value) { this.type = value; return this; }
+    public ColumnMetaData logicalType(ColumnType value) { this.logicalType = value; return this; }
     public ColumnMetaData jdbcType(int value) { this.jdbcType = value; return this; }
     public ColumnMetaData jdbcTypeName(String value) { this.jdbcTypeName = value; return this; }
     public ColumnMetaData length(int value) { this.length = value; return this; }
