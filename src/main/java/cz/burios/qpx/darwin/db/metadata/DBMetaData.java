@@ -55,7 +55,7 @@ public class DBMetaData {
                 TableMetaData table = new TableMetaData(name)
                         .schema(tableSchema)
                         .database(catalog);
-                loadColumns(db, catalog, tableSchema, name, table);
+                loadColumns(db, connection, dialect, catalog, tableSchema, name, table);
                 dialect.loadTableOptions(connection, catalog, tableSchema, table);
                 result.add(table);
             }
@@ -63,8 +63,8 @@ public class DBMetaData {
         return result;
     }
 
-    private static void loadColumns(DatabaseMetaData db, String catalog, String schema, String tableName,
-            TableMetaData table) throws SQLException {
+    private static void loadColumns(DatabaseMetaData db, Connection connection, DBDialect dialect,
+            String catalog, String schema, String tableName, TableMetaData table) throws SQLException {
         Map<String, ColumnMetaData> columns = new LinkedHashMap<>();
         try (ResultSet rs = db.getColumns(catalog, schema, tableName, "%")) {
             while (rs.next()) {
@@ -81,6 +81,7 @@ public class DBMetaData {
                 c.ordinalPosition = rs.getInt("ORDINAL_POSITION");
                 c.defaultValue = rs.getString("COLUMN_DEF");
                 c.autoIncrement = "YES".equalsIgnoreCase(rs.getString("IS_AUTOINCREMENT"));
+                dialect.loadColumnOptions(connection, catalog, schema, tableName, c);
                 columns.put(c.name, c);
             }
         }
