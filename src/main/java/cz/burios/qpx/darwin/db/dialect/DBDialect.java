@@ -17,6 +17,12 @@ public interface DBDialect {
         // No database-specific options known.
     }
 
+    /** Loads database-specific column properties into metadata. */
+    default void loadColumnOptions(Connection connection, String catalog, String schema,
+            String tableName, ColumnMetaData column) throws SQLException {
+        // No database-specific column options known.
+    }
+
     /** Renders a table name for DDL. Dialects own catalog/schema qualification. */
     default String tableName(TableMetaData table) {
         if (table.schema != null && !table.schema.isBlank()) return quote(table.schema) + "." + quote(table.name);
@@ -47,5 +53,7 @@ public interface DBDialect {
         if (name == null || !name.matches("[A-Za-z_][A-Za-z0-9_$]*")) throw new IllegalArgumentException("Invalid SQL identifier: " + name);
         return "`" + name + "`";
     }
+    /** Renders the database-specific fragment for column generation semantics. */
+    default String columnGeneration(ColumnMetaData column) { return ""; }
     String columnDefinition(ColumnMetaData column);
 }
