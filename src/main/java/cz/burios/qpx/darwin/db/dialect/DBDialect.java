@@ -12,6 +12,11 @@ public interface DBDialect {
     default String catalog(Connection connection) throws SQLException { return connection.getCatalog(); }
     default String schema(Connection connection) throws SQLException { return connection.getSchema(); }
 
+    /** Loads database-specific table options into metadata. The default dialect has no options to load. */
+    default void loadTableOptions(Connection connection, String catalog, String schema, TableMetaData table) throws SQLException {
+        // No database-specific options known.
+    }
+
     /** Renders a table name for DDL. Dialects own catalog/schema qualification. */
     default String tableName(TableMetaData table) {
         if (table.schema != null && !table.schema.isBlank()) return quote(table.schema) + "." + quote(table.name);
