@@ -3,6 +3,19 @@ package cz.burios.qpx.darwin.db.dao;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
+import cz.burios.qpx.darwin.db.uniql.QLColumn;
+import cz.burios.qpx.darwin.db.uniql.QLCondition;
+import cz.burios.qpx.darwin.db.uniql.QLGroupBy;
+import cz.burios.qpx.darwin.db.uniql.QLJoin;
+import cz.burios.qpx.darwin.db.uniql.QLLimit;
+import cz.burios.qpx.darwin.db.uniql.QLOffset;
+import cz.burios.qpx.darwin.db.uniql.QLOrderBy;
+import cz.burios.qpx.darwin.db.uniql.QLSelect;
+import cz.burios.qpx.darwin.db.uniql.QLTable;
+import cz.burios.qpx.darwin.db.uniql.QLValue;
+import cz.burios.qpx.darwin.db.uniql.QLVisitor;
+import cz.burios.qpx.darwin.db.uniql.QLWhere;
+
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
 @JsonSubTypes({
     @JsonSubTypes.Type(value = QLSelect.class, name = "select"),
