@@ -17,10 +17,13 @@ public class QLSchemaDiffTest {
             manager.createTable(connection, actualTable);
 
             DBMetaData actual = DBMetaData.load(connection);
+            TableMetaData loaded = actual.table("DYN_STORE");
+            if (loaded == null) throw new AssertionError("DYN_STORE was not discovered");
+
             DBMetaData desired = new DBMetaData(actual.databaseName);
             TableMetaData desiredTable = new TableMetaData("DYN_STORE");
-            desiredTable.addColumn(new ColumnMetaData("ID").type("BIGINT").nullable(false).primaryKey(true).autoIncrement(true));
-            desiredTable.addColumn(new ColumnMetaData("NAME").type("VARCHAR(120)").nullable(false));
+            desiredTable.addColumn(copy(loaded.column("ID")));
+            desiredTable.addColumn(copy(loaded.column("NAME")));
             desiredTable.addColumn(new ColumnMetaData("ACTIVE").type("BOOLEAN").nullable(false).defaultValue("TRUE"));
             desired.add(desiredTable);
 
@@ -42,5 +45,21 @@ public class QLSchemaDiffTest {
                 throw new AssertionError("Expected DROP_TABLE: " + destructiveDiff);
         }
         System.out.println("QLSchemaDiffTest: OK");
+    }
+
+    private static ColumnMetaData copy(ColumnMetaData source) {
+        return new ColumnMetaData(source.name)
+                .label(source.label)
+                .type(source.type)
+                .jdbcType(source.jdbcType)
+                .jdbcTypeName(source.jdbcTypeName)
+                .length(source.length)
+                .precision(source.precision)
+                .scale(source.scale)
+                .nullable(source.nullable)
+                .primaryKey(source.primaryKey)
+                .autoIncrement(source.autoIncrement)
+                .ordinalPosition(source.ordinalPosition)
+                .defaultValue(source.defaultValue);
     }
 }
