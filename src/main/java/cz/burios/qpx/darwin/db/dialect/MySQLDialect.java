@@ -41,11 +41,13 @@ public class MySQLDialect implements DBDialect {
     }
     @Override public void loadColumnOptions(Connection connection, String catalog, String schema, String tableName, ColumnMetaData column) throws SQLException {
         if (catalog == null || catalog.isBlank() || tableName == null || column.name == null) return;
-        String sql = "SELECT EXTRA FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=? AND TABLE_NAME=? AND COLUMN_NAME=?";
+        String sql = "SELECT EXTRA, COLLATION_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=? AND TABLE_NAME=? AND COLUMN_NAME=?";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setString(1, catalog); ps.setString(2, tableName); ps.setString(3, column.name);
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next()) return;
+                String collation = rs.getString("COLLATION_NAME");
+                if (collation != null && !collation.isBlank()) column.collation(collation);
                 String extra = rs.getString("EXTRA");
                 if (extra == null) return;
                 String normalized = extra.toLowerCase(java.util.Locale.ROOT);
@@ -94,6 +96,7 @@ public class MySQLDialect implements DBDialect {
         String generation = columnGeneration(c);
         if (!generation.isBlank()) sql.append(' ').append(generation);
         else if (c.defaultValue != null) sql.append(" DEFAULT ").append(c.defaultValue);
+        if (c.collation != null && !c.collation.isBlank() && isCharacterType(c)) sql.append(" COLLATE ").append(c.collation);
         return sql.toString();
     }
     @Override public String columnGeneration(ColumnMetaData c) {
@@ -112,6 +115,10 @@ public class MySQLDialect implements DBDialect {
             sql.append(' ').append(entry.getKey()).append('=').append(entry.getValue());
         }
         return sql.toString();
+    }
+    private boolean isCharacterType(ColumnMetaData c) {
+        return c.logicalType == ColumnType.STRING || c.logicalType == ColumnType.TEXT
+                || c.jdbcType == Types.CHAR || c.jdbcType == Types.VARCHAR || c.jdbcType == Types.LONGVARCHAR;
     }
     private String type(ColumnMetaData c) {
         if (c.logicalType != null) return switch (c.logicalType) {
