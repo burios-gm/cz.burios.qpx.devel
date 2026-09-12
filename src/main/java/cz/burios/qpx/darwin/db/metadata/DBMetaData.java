@@ -41,6 +41,7 @@ public class DBMetaData {
                 String name = tables.getString("TABLE_NAME");
                 TableMetaData table = new TableMetaData(name).schema(tableSchema).database(catalog);
                 loadColumns(db, connection, dialect, catalog, tableSchema, name, table);
+                loadIndexes(db, catalog, tableSchema, name, table);
                 dialect.loadTableOptions(connection, catalog, tableSchema, table);
                 result.add(table);
             }
@@ -68,5 +69,27 @@ public class DBMetaData {
             while (rs.next()) { ColumnMetaData c = columns.get(rs.getString("COLUMN_NAME")); if (c != null) c.primaryKey = true; }
         }
         table.columns.clear(); table.columns.addAll(columns.values());
+    }
+
+    private static void loadIndexes(DatabaseMetaData db, String catalog, String schema, String tableName, TableMetaData table) throws SQLException {
+        Map<String, IndexMetaData> indexes = new LinkedHashMap<>();
+        try (ResultSet rs = db.getIndexInfo(catalog, schema, tableName, false, false)) {
+            while (rs.next()) {
+                String name = rs.getString("INDEX_NAME");
+                String column = rs.getString("COLUMN_NAME");
+                if (name == null || column == null) continue;
+                String indexType = rs.getString("TYPE");
+                IndexMetaData index = indexes.get(name);
+                if (index == null) {
+                    index = new IndexMetaData(name)
+                            .unique(!rs.getBoolean("NON_UNIQUE"))
+                            .type(indexType);
+                    indexes.put(name, index);
+                }
+                index.column(column);
+            }
+        }
+        table.indexes.clear();
+        table.indexes.addAll(indexes.values());
     }
 }
