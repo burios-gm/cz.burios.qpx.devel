@@ -4,6 +4,8 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+import cz.burios.qpx.darwin.db.dialect.DBDialect;
+
 /** Runtime DDL facade. The dialect owns database-specific SQL details. */
 public class DBSchemaManager {
     private final DBDialect dialect;
