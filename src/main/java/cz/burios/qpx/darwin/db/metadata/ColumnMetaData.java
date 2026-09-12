@@ -4,12 +4,20 @@ package cz.burios.qpx.darwin.db.metadata;
 public class ColumnMetaData {
     public String name;
     public String label;
+    /** Native SQL type name, primarily describing an existing database column. */
     public String type;
+    /** Database-independent logical type used for desired schema definitions. */
+    public ColumnType logicalType;
     public int jdbcType;
     public String jdbcTypeName;
+    /** Length for character/binary types. */
     public int length;
+    /** Precision for decimal types. */
     public int precision;
+    /** Scale for decimal types. */
     public int scale;
+    /** Optional database collation for character columns. */
+    public String collation;
     public boolean nullable = true;
     public boolean primaryKey;
     public boolean autoIncrement;
@@ -24,12 +32,43 @@ public class ColumnMetaData {
 
     public ColumnMetaData name(String value) { this.name = value; return this; }
     public ColumnMetaData label(String value) { this.label = value; return this; }
+    /** Sets a native SQL type override. Prefer {@link #logicalType(ColumnType)} for portable definitions. */
     public ColumnMetaData type(String value) { this.type = value; return this; }
+    public ColumnMetaData logicalType(ColumnType value) { this.logicalType = value; return this; }
+    public ColumnMetaData string(int length) { return logicalType(ColumnType.STRING).length(length); }
+    public ColumnMetaData text() { return logicalType(ColumnType.TEXT); }
+    public ColumnMetaData bool() { return logicalType(ColumnType.BOOLEAN); }
+    public ColumnMetaData integer() { return logicalType(ColumnType.INTEGER); }
+    public ColumnMetaData longType() { return logicalType(ColumnType.LONG); }
+    public ColumnMetaData decimal(int precision, int scale) {
+        return logicalType(ColumnType.DECIMAL).precision(precision).scale(scale);
+    }
+    public ColumnMetaData doubleType() { return logicalType(ColumnType.DOUBLE); }
+    public ColumnMetaData date() { return logicalType(ColumnType.DATE); }
+    public ColumnMetaData time() { return logicalType(ColumnType.TIME); }
+    public ColumnMetaData datetime() { return logicalType(ColumnType.DATETIME); }
+    public ColumnMetaData timestamp() { return logicalType(ColumnType.TIMESTAMP); }
+    public ColumnMetaData binary(int length) { return logicalType(ColumnType.BINARY).length(length); }
     public ColumnMetaData jdbcType(int value) { this.jdbcType = value; return this; }
     public ColumnMetaData jdbcTypeName(String value) { this.jdbcTypeName = value; return this; }
-    public ColumnMetaData length(int value) { this.length = value; return this; }
-    public ColumnMetaData precision(int value) { this.precision = value; return this; }
-    public ColumnMetaData scale(int value) { this.scale = value; return this; }
+    public ColumnMetaData length(int value) {
+        if (value < 0) throw new IllegalArgumentException("length must not be negative");
+        this.length = value;
+        return this;
+    }
+    public ColumnMetaData precision(int value) {
+        if (value < 0) throw new IllegalArgumentException("precision must not be negative");
+        if (scale > value && value > 0) throw new IllegalArgumentException("precision must not be smaller than scale");
+        this.precision = value;
+        return this;
+    }
+    public ColumnMetaData scale(int value) {
+        if (value < 0) throw new IllegalArgumentException("scale must not be negative");
+        if (precision > 0 && value > precision) throw new IllegalArgumentException("scale must not exceed precision");
+        this.scale = value;
+        return this;
+    }
+    public ColumnMetaData collation(String value) { this.collation = value; return this; }
     public ColumnMetaData nullable(boolean value) { this.nullable = value; return this; }
     public ColumnMetaData primaryKey(boolean value) { this.primaryKey = value; return this; }
     public ColumnMetaData autoIncrement(boolean value) { this.autoIncrement = value; return this; }
