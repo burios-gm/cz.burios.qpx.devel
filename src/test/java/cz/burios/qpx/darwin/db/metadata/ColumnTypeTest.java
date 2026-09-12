@@ -38,9 +38,26 @@ public class ColumnTypeTest {
         ColumnMetaData collated = new ColumnMetaData("NAME").string(20).collation("utf8_czech_ci");
         if (!mysql.columnDefinition(collated).contains("COLLATE utf8_czech_ci"))
             throw new AssertionError(mysql.columnDefinition(collated));
-
         if (!"`NAME` VARCHAR(20) COLLATE utf8_czech_ci".equals(mysql.columnDefinition(collated)))
             throw new AssertionError(mysql.columnDefinition(collated));
+
+        ColumnMetaData altered = new ColumnMetaData("NAME").string(80).nullable(false).defaultValue("''");
+        TableMetaData mysqlTable = new TableMetaData("STORE");
+        if (!"ALTER TABLE `STORE` MODIFY COLUMN `NAME` VARCHAR(80) NOT NULL DEFAULT ''".equals(mysql.alterColumn(mysqlTable, altered)))
+            throw new AssertionError(mysql.alterColumn(mysqlTable, altered));
+
+        TableMetaData postgresTable = new TableMetaData("STORE").schema("public");
+        if (!"ALTER TABLE \"public\".\"STORE\" ALTER COLUMN \"NAME\" TYPE VARCHAR(80), ALTER COLUMN \"NAME\" SET NOT NULL, ALTER COLUMN \"NAME\" SET DEFAULT ''".equals(postgres.alterColumn(postgresTable, altered)))
+            throw new AssertionError(postgres.alterColumn(postgresTable, altered));
+
+        boolean postgresUpdateGenerationRejected = false;
+        try {
+            postgres.columnDefinition(new ColumnMetaData("UPDATED_AT").datetime()
+                    .generation(ColumnGeneration.INSERT_UPDATE_TIMESTAMP));
+        } catch (UnsupportedOperationException expected) {
+            postgresUpdateGenerationRejected = true;
+        }
+        if (!postgresUpdateGenerationRejected) throw new AssertionError("PostgreSQL ON UPDATE generation must be explicit");
 
         boolean invalidScale = false;
         try { new ColumnMetaData("AMOUNT").decimal(4, 5); }

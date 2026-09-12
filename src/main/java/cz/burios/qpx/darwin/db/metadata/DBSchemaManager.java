@@ -44,7 +44,7 @@ public class DBSchemaManager {
     public void alterColumn(Connection connection, TableMetaData table, ColumnMetaData column) throws SQLException {
         require(table);
         if (column == null || column.name == null || column.name.isBlank()) throw new IllegalArgumentException("column is required");
-        execute(connection, "ALTER TABLE " + dialect.tableName(table) + " MODIFY COLUMN " + dialect.columnDefinition(column));
+        execute(connection, dialect.alterColumn(table, column));
     }
     public void alterTableParams(Connection connection, TableMetaData table) throws SQLException {
         require(table);
