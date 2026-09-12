@@ -1,11 +1,9 @@
 package cz.burios.qpx.darwin.db.metadata;
 
 import java.sql.Types;
-
 import cz.burios.qpx.darwin.db.dialect.MySQLDialect;
 import cz.burios.qpx.darwin.db.dialect.PostgreSQLDialect;
 
-/** Executable logical-column-type test; no JUnit required. */
 public class ColumnTypeTest {
     public static void main(String[] args) {
         MySQLDialect mysql = new MySQLDialect();
@@ -36,6 +34,18 @@ public class ColumnTypeTest {
                 .generation(ColumnGeneration.INSERT_UPDATE_TIMESTAMP);
         if (!mysql.columnDefinition(generated).contains("DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"))
             throw new AssertionError(mysql.columnDefinition(generated));
+
+        ColumnMetaData collated = new ColumnMetaData("NAME").string(20).collation("utf8_czech_ci");
+        if (!mysql.columnDefinition(collated).contains("COLLATE utf8_czech_ci"))
+            throw new AssertionError(mysql.columnDefinition(collated));
+
+        if (!"`NAME` VARCHAR(20) COLLATE utf8_czech_ci".equals(mysql.columnDefinition(collated)))
+            throw new AssertionError(mysql.columnDefinition(collated));
+
+        boolean invalidScale = false;
+        try { new ColumnMetaData("AMOUNT").decimal(4, 5); }
+        catch (IllegalArgumentException expected) { invalidScale = true; }
+        if (!invalidScale) throw new AssertionError("scale > precision must fail");
 
         System.out.println("ColumnTypeTest: OK");
     }
