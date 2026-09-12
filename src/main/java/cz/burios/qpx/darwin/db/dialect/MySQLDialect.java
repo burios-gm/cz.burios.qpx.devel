@@ -27,14 +27,14 @@ public class MySQLDialect implements DBDialect {
                 String engine = rs.getString("ENGINE");
                 String collation = rs.getString("TABLE_COLLATION");
                 String comment = rs.getString("TABLE_COMMENT");
-                if (engine != null) table.param("ENGINE", engine);
+                if (engine != null) table.actualParam("ENGINE", engine);
                 if (collation != null) {
                     int separator = collation.indexOf('_');
                     String charset = separator > 0 ? collation.substring(0, separator) : null;
-                    if (charset != null && !charset.isBlank()) table.param("DEFAULT CHARSET", charset);
-                    table.param("COLLATE", collation);
+                    if (charset != null && !charset.isBlank()) table.actualParam("DEFAULT CHARSET", charset);
+                    table.actualParam("COLLATE", collation);
                 }
-                if (comment != null && !comment.isBlank()) table.param("COMMENT", "'" + comment.replace("'", "''") + "'");
+                if (comment != null && !comment.isBlank()) table.actualParam("COMMENT", "'" + comment.replace("'", "''") + "'");
             }
         }
     }
