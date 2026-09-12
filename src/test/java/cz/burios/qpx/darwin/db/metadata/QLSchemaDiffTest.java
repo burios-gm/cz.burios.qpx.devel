@@ -43,23 +43,35 @@ public class QLSchemaDiffTest {
             SchemaDiff destructiveDiff = SchemaDiff.compare(withExtra, new DBMetaData(actual.databaseName), true);
             if (destructiveDiff.size() != 1 || destructiveDiff.changes().get(0).type() != SchemaChange.Type.DROP_TABLE)
                 throw new AssertionError("Expected DROP_TABLE: " + destructiveDiff);
+
+            TableMetaData parameterized = new TableMetaData("PARAM_TABLE")
+                    .param("ENGINE", "InnoDB")
+                    .param("DEFAULT CHARSET", "utf8mb4")
+                    .param("COLLATE", "utf8mb4_czech_ci");
+            String createSql = manager.dialect().tableOptions(parameterized);
+            if (!" ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_czech_ci".equals(createSql))
+                throw new AssertionError("Unexpected table options SQL: " + createSql);
+            if (!manager.dialect().alterTableOptions(parameterized).contains("ALTER TABLE `PARAM_TABLE` ENGINE=InnoDB"))
+                throw new AssertionError("Unexpected ALTER TABLE options SQL: " + manager.dialect().alterTableOptions(parameterized));
+
+            TableMetaData actualParameterized = new TableMetaData("PARAM_TABLE");
+            actualParameterized.params.put("ENGINE", "InnoDB");
+            DBMetaData actualWithParams = new DBMetaData();
+            actualWithParams.add(actualParameterized);
+            DBMetaData desiredWithParams = new DBMetaData();
+            desiredWithParams.add(new TableMetaData("PARAM_TABLE").param("ENGINE", "InnoDB").param("COLLATE", "utf8mb4_czech_ci"));
+            SchemaDiff parameterDiff = SchemaDiff.compare(actualWithParams, desiredWithParams);
+            if (parameterDiff.size() != 1 || parameterDiff.changes().get(0).type() != SchemaChange.Type.ALTER_TABLE_PARAMS)
+                throw new AssertionError("Expected ALTER_TABLE_PARAMS: " + parameterDiff);
         }
         System.out.println("QLSchemaDiffTest: OK");
     }
 
     private static ColumnMetaData copy(ColumnMetaData source) {
         return new ColumnMetaData(source.name)
-                .label(source.label)
-                .type(source.type)
-                .jdbcType(source.jdbcType)
-                .jdbcTypeName(source.jdbcTypeName)
-                .length(source.length)
-                .precision(source.precision)
-                .scale(source.scale)
-                .nullable(source.nullable)
-                .primaryKey(source.primaryKey)
-                .autoIncrement(source.autoIncrement)
-                .ordinalPosition(source.ordinalPosition)
+                .label(source.label).type(source.type).jdbcType(source.jdbcType).jdbcTypeName(source.jdbcTypeName)
+                .length(source.length).precision(source.precision).scale(source.scale).nullable(source.nullable)
+                .primaryKey(source.primaryKey).autoIncrement(source.autoIncrement).ordinalPosition(source.ordinalPosition)
                 .defaultValue(source.defaultValue);
     }
 }
