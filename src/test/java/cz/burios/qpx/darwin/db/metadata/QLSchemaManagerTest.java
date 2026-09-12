@@ -1,8 +1,9 @@
 package cz.burios.qpx.darwin.db.metadata;
 
-import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.DriverManager;
+
+import cz.burios.qpx.darwin.db.dialect.MySQLDialect;
 
 /** Executable schema-manager test; no JUnit required. */
 public class QLSchemaManagerTest {
