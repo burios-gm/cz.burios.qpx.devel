@@ -1,7 +1,9 @@
 package cz.burios.qpx.darwin.db.metadata;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /** Metadata of one database table; mutable so runtime-defined tables can evolve. */
 public class TableMetaData {
@@ -11,6 +13,13 @@ public class TableMetaData {
     public String label;
     public final List<ColumnMetaData> columns = new ArrayList<>();
 
+    /**
+     * Database-specific table options appended to CREATE TABLE by the dialect.
+     * A LinkedHashMap keeps the SQL option order deterministic.
+     * Values are SQL fragments, e.g. ENGINE -> InnoDB, COLLATE -> utf8mb4_czech_ci.
+     */
+    public final Map<String, Object> params = new LinkedHashMap<>();
+
     public TableMetaData() {}
     public TableMetaData(String name) { this.name = name; this.label = name; }
     public TableMetaData(String name, List<ColumnMetaData> columns) { this(name); if (columns != null) this.columns.addAll(columns); }
@@ -19,6 +28,9 @@ public class TableMetaData {
     public TableMetaData schema(String value) { this.schema = value; return this; }
     public TableMetaData name(String value) { this.name = value; return this; }
     public TableMetaData label(String value) { this.label = value; return this; }
+    public TableMetaData param(String name, Object value) { params.put(name, value); return this; }
+    public TableMetaData params(Map<String, Object> values) { if (values != null) params.putAll(values); return this; }
+    public TableMetaData removeParam(String name) { params.remove(name); return this; }
 
     public TableMetaData addColumn(ColumnMetaData column) { columns.add(column); return this; }
     public ColumnMetaData column(String columnName) {
