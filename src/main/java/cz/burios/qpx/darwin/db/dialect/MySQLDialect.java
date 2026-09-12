@@ -106,6 +106,9 @@ public class MySQLDialect implements DBDialect {
             case INSERT_UPDATE_TIMESTAMP -> "DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP";
         };
     }
+    @Override public String alterColumn(TableMetaData table, ColumnMetaData column) {
+        return "ALTER TABLE " + tableName(table) + " MODIFY COLUMN " + columnDefinition(column);
+    }
     @Override public String alterTableOptions(TableMetaData table) {
         if (table.params.isEmpty()) return "";
         StringBuilder sql = new StringBuilder("ALTER TABLE ").append(tableName(table));
