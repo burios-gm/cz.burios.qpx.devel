@@ -3,6 +3,7 @@ package cz.burios.qpx.darwin.db.dialect;
 import java.sql.Types;
 import java.util.Locale;
 
+import cz.burios.qpx.darwin.db.metadata.ColumnGeneration;
 import cz.burios.qpx.darwin.db.metadata.ColumnMetaData;
 import cz.burios.qpx.darwin.db.metadata.ColumnType;
 import cz.burios.qpx.darwin.db.metadata.TableMetaData;
@@ -53,7 +54,33 @@ public class PostgreSQLDialect implements DBDialect {
     @Override public String columnDefinition(ColumnMetaData c) {
         StringBuilder sql = new StringBuilder(columnName(c.name)).append(' ').append(type(c));
         if (!c.nullable) sql.append(" NOT NULL");
-        if (c.defaultValue != null) sql.append(" DEFAULT ").append(c.defaultValue);
+        String generation = columnGeneration(c);
+        if (!generation.isBlank()) sql.append(' ').append(generation);
+        else if (c.defaultValue != null) sql.append(" DEFAULT ").append(c.defaultValue);
+        return sql.toString();
+    }
+    @Override public String columnGeneration(ColumnMetaData c) {
+        return switch (c.generation == null ? ColumnGeneration.NONE : c.generation) {
+            case NONE -> "";
+            case INSERT_TIMESTAMP -> "DEFAULT CURRENT_TIMESTAMP";
+            case INSERT_UPDATE_TIMESTAMP -> throw new UnsupportedOperationException(
+                    "PostgreSQL does not support MySQL-style ON UPDATE CURRENT_TIMESTAMP; use a trigger or application lifecycle handling");
+        };
+    }
+    @Override public String alterColumn(TableMetaData table, ColumnMetaData column) {
+        StringBuilder sql = new StringBuilder("ALTER TABLE ").append(tableName(table))
+                .append(" ALTER COLUMN ").append(columnName(column.name));
+        sql.append(" TYPE ").append(type(column));
+        if (column.nullable) sql.append(", ALTER COLUMN ").append(columnName(column.name)).append(" DROP NOT NULL");
+        else sql.append(", ALTER COLUMN ").append(columnName(column.name)).append(" SET NOT NULL");
+        if (column.generation == ColumnGeneration.INSERT_UPDATE_TIMESTAMP)
+            throw new UnsupportedOperationException("PostgreSQL does not support MySQL-style ON UPDATE CURRENT_TIMESTAMP; use a trigger or application lifecycle handling");
+        if (column.defaultValue != null || column.generation == ColumnGeneration.INSERT_TIMESTAMP) {
+            sql.append(", ALTER COLUMN ").append(columnName(column.name)).append(" SET DEFAULT ");
+            sql.append(column.generation == ColumnGeneration.INSERT_TIMESTAMP ? "CURRENT_TIMESTAMP" : column.defaultValue);
+        } else {
+            sql.append(", ALTER COLUMN ").append(columnName(column.name)).append(" DROP DEFAULT");
+        }
         return sql.toString();
     }
     private String type(ColumnMetaData c) {
