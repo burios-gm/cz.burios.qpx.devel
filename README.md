@@ -13,3 +13,5 @@ instalace přes terminál:
 
 spuštění jednotlivých kompilačních funkcí:
 - npm run test-css atd...
+
+cz.burios.qpx.darwin.db.dialect

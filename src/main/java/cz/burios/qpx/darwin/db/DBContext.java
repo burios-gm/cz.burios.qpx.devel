@@ -53,12 +53,14 @@ public class DBContext {
 					List<ColumnMetaData> cols = new ArrayList<>();
 					try (ResultSet rsCols = meta.getColumns(conn.getCatalog(), null, tableName, "%")) {
 						while (rsCols.next()) {
+							/*
 							cols.add(new ColumnMetaData(
 									rsCols.getString("COLUMN_NAME"), 
 									rsCols.getInt("DATA_TYPE"),
 									rsCols.getString("TYPE_NAME"), 
 									rsCols.getInt("COLUMN_SIZE"),
 									"YES".equalsIgnoreCase(rsCols.getString("IS_NULLABLE"))));
+							*/
 						}
 					}
 					addTable(new TableMetaData(tableName, cols));
