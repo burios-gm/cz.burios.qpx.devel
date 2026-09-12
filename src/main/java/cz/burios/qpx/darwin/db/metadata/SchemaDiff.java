@@ -80,10 +80,14 @@ public final class SchemaDiff {
         return true;
     }
 
+    /**
+     * Compares desired table options with options observed by the dialect.
+     * Desired options remain in params; actual database options are kept in actualParams.
+     */
     private static boolean sameParams(TableMetaData actual, TableMetaData desired) {
         if (desired.params.isEmpty()) return true;
         for (Map.Entry<String, Object> wanted : desired.params.entrySet()) {
-            Object actualValue = findParam(actual.params, wanted.getKey());
+            Object actualValue = findParam(actual.actualParams, wanted.getKey());
             if (actualValue == null && wanted.getValue() != null) return false;
             if (wanted.getValue() != null && !String.valueOf(wanted.getValue()).equalsIgnoreCase(String.valueOf(actualValue))) return false;
         }
