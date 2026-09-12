@@ -6,12 +6,10 @@ import cz.burios.qpx.darwin.db.metadata.TableMetaData;
 /** MySQL dialect: JDBC catalog is the database namespace. */
 public class MySQLDialect implements DBDialect {
     @Override public String name() { return "mysql"; }
-
     @Override public String tableName(TableMetaData table) {
         if (table.database != null && !table.database.isBlank()) return quote(table.database) + "." + quote(table.name);
         return quote(table.name);
     }
-
     @Override public String columnDefinition(ColumnMetaData c) {
         StringBuilder sql = new StringBuilder(columnName(c.name)).append(' ').append(type(c));
         if (c.autoIncrement) sql.append(" AUTO_INCREMENT");
@@ -19,7 +17,16 @@ public class MySQLDialect implements DBDialect {
         if (c.defaultValue != null) sql.append(" DEFAULT ").append(c.defaultValue);
         return sql.toString();
     }
-
+    @Override public String alterTableOptions(TableMetaData table) {
+        if (table.params.isEmpty()) return "";
+        StringBuilder sql = new StringBuilder("ALTER TABLE ").append(tableName(table));
+        for (var entry : table.params.entrySet()) {
+            if (entry.getKey() == null || entry.getKey().isBlank()) throw new IllegalArgumentException("Table option name must not be blank");
+            if (entry.getValue() == null) continue;
+            sql.append(' ').append(entry.getKey()).append('=').append(entry.getValue());
+        }
+        return sql.toString();
+    }
     private String type(ColumnMetaData c) {
         if (c.type != null && !c.type.isBlank()) {
             String t = c.type.trim();
