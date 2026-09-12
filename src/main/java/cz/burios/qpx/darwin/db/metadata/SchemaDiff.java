@@ -76,7 +76,11 @@ public final class SchemaDiff {
         if (desired.scale != 0 && actual.scale != desired.scale) return false;
         if (actual.nullable != desired.nullable) return false;
         if (desired.autoIncrement && !actual.autoIncrement) return false;
+        if (desired.primaryKey && !actual.primaryKey) return false;
         if (desired.defaultValue != null && !equal(actual.defaultValue, desired.defaultValue)) return false;
+        ColumnGeneration desiredGeneration = desired.generation == null ? ColumnGeneration.NONE : desired.generation;
+        ColumnGeneration actualGeneration = actual.generation == null ? ColumnGeneration.NONE : actual.generation;
+        if (desiredGeneration != actualGeneration) return false;
         return true;
     }
 
