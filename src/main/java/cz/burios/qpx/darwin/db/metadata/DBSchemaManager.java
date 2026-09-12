@@ -25,7 +25,7 @@ public class DBSchemaManager {
             sql.append(dialect.columnDefinition(table.columns.get(i)));
         }
         appendPrimaryKey(sql, table);
-        sql.append(')');
+        sql.append(')').append(dialect.tableOptions(table));
         execute(connection, sql.toString());
     }
 
