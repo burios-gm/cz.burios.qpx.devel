@@ -5,6 +5,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
+import cz.burios.qpx.darwin.db.metadata.ColumnGeneration;
 import cz.burios.qpx.darwin.db.metadata.ColumnMetaData;
 import cz.burios.qpx.darwin.db.metadata.TableMetaData;
 
@@ -38,12 +39,43 @@ public class MySQLDialect implements DBDialect {
             }
         }
     }
+    @Override public void loadColumnOptions(Connection connection, String catalog, String schema,
+            String tableName, ColumnMetaData column) throws SQLException {
+        if (catalog == null || catalog.isBlank() || tableName == null || column.name == null) return;
+        String sql = "SELECT EXTRA FROM INFORMATION_SCHEMA.COLUMNS "
+                + "WHERE TABLE_SCHEMA=? AND TABLE_NAME=? AND COLUMN_NAME=?";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, catalog);
+            ps.setString(2, tableName);
+            ps.setString(3, column.name);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) return;
+                String extra = rs.getString("EXTRA");
+                if (extra == null) return;
+                String normalized = extra.toLowerCase(java.util.Locale.ROOT);
+                boolean onUpdate = normalized.contains("on update current_timestamp");
+                boolean currentDefault = column.defaultValue != null
+                        && column.defaultValue.toLowerCase(java.util.Locale.ROOT).contains("current_timestamp");
+                if (onUpdate) column.generation(ColumnGeneration.INSERT_UPDATE_TIMESTAMP);
+                else if (currentDefault) column.generation(ColumnGeneration.INSERT_TIMESTAMP);
+            }
+        }
+    }
     @Override public String columnDefinition(ColumnMetaData c) {
         StringBuilder sql = new StringBuilder(columnName(c.name)).append(' ').append(type(c));
         if (c.autoIncrement) sql.append(" AUTO_INCREMENT");
         if (!c.nullable) sql.append(" NOT NULL");
-        if (c.defaultValue != null) sql.append(" DEFAULT ").append(c.defaultValue);
+        String generation = columnGeneration(c);
+        if (!generation.isBlank()) sql.append(' ').append(generation);
+        else if (c.defaultValue != null) sql.append(" DEFAULT ").append(c.defaultValue);
         return sql.toString();
+    }
+    @Override public String columnGeneration(ColumnMetaData c) {
+        return switch (c.generation == null ? ColumnGeneration.NONE : c.generation) {
+            case NONE -> "";
+            case INSERT_TIMESTAMP -> "DEFAULT CURRENT_TIMESTAMP";
+            case INSERT_UPDATE_TIMESTAMP -> "DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP";
+        };
     }
     @Override public String alterTableOptions(TableMetaData table) {
         if (table.params.isEmpty()) return "";
