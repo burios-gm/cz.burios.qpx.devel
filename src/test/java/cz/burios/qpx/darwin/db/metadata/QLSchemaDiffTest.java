@@ -54,15 +54,28 @@ public class QLSchemaDiffTest {
             if (!manager.dialect().alterTableOptions(parameterized).contains("ALTER TABLE `PARAM_TABLE` ENGINE=InnoDB"))
                 throw new AssertionError("Unexpected ALTER TABLE options SQL: " + manager.dialect().alterTableOptions(parameterized));
 
-            TableMetaData actualParameterized = new TableMetaData("PARAM_TABLE");
-            actualParameterized.params.put("ENGINE", "InnoDB");
+            // params are desired state; actualParams are the state discovered in the database.
+            TableMetaData actualParameterized = new TableMetaData("PARAM_TABLE")
+                    .actualParam("ENGINE", "InnoDB")
+                    .actualParam("DEFAULT CHARSET", "utf8mb4");
             DBMetaData actualWithParams = new DBMetaData();
             actualWithParams.add(actualParameterized);
+
             DBMetaData desiredWithParams = new DBMetaData();
-            desiredWithParams.add(new TableMetaData("PARAM_TABLE").param("ENGINE", "InnoDB").param("COLLATE", "utf8mb4_czech_ci"));
+            desiredWithParams.add(new TableMetaData("PARAM_TABLE")
+                    .param("ENGINE", "InnoDB")
+                    .param("DEFAULT CHARSET", "utf8mb4"));
+            SchemaDiff matchingParameterDiff = SchemaDiff.compare(actualWithParams, desiredWithParams);
+            if (!matchingParameterDiff.isEmpty())
+                throw new AssertionError("Matching actual/desired table params must produce no change: " + matchingParameterDiff);
+
+            desiredWithParams = new DBMetaData();
+            desiredWithParams.add(new TableMetaData("PARAM_TABLE")
+                    .param("ENGINE", "InnoDB")
+                    .param("COLLATE", "utf8mb4_czech_ci"));
             SchemaDiff parameterDiff = SchemaDiff.compare(actualWithParams, desiredWithParams);
             if (parameterDiff.size() != 1 || parameterDiff.changes().get(0).type() != SchemaChange.Type.ALTER_TABLE_PARAMS)
-                throw new AssertionError("Expected ALTER_TABLE_PARAMS: " + parameterDiff);
+                throw new AssertionError("Expected ALTER_TABLE_PARAMS for an option mismatch: " + parameterDiff);
         }
         System.out.println("QLSchemaDiffTest: OK");
     }
