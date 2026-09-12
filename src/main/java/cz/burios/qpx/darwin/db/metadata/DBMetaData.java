@@ -56,6 +56,7 @@ public class DBMetaData {
                         .schema(tableSchema)
                         .database(catalog);
                 loadColumns(db, catalog, tableSchema, name, table);
+                dialect.loadTableOptions(connection, catalog, tableSchema, table);
                 result.add(table);
             }
         }
