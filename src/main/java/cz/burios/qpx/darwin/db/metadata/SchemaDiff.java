@@ -65,6 +65,7 @@ public final class SchemaDiff {
         if (desired.length > 0 && actual.length != desired.length) return false;
         if (desired.precision > 0 && actual.precision != desired.precision) return false;
         if (desired.scale != 0 && actual.scale != desired.scale) return false;
+        if (desired.collation != null && !desired.collation.isBlank() && !equalIgnoreCase(actual.collation, desired.collation)) return false;
         if (actual.nullable != desired.nullable) return false;
         if (desired.autoIncrement && !actual.autoIncrement) return false;
         if (desired.primaryKey && !actual.primaryKey) return false;
