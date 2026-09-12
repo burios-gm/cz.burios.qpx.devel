@@ -52,6 +52,10 @@ public interface DBDialect {
     default String alterTableOptions(TableMetaData table) {
         throw new UnsupportedOperationException("Table option alteration is not supported by dialect: " + name());
     }
+    /** Returns complete SQL for altering one column in the supplied table. */
+    default String alterColumn(TableMetaData table, ColumnMetaData column) {
+        throw new UnsupportedOperationException("Column alteration is not supported by dialect: " + name());
+    }
     default String columnName(String name) { return quote(name); }
     default String quote(String name) {
         if (name == null || !name.matches("[A-Za-z_][A-Za-z0-9_$]*")) throw new IllegalArgumentException("Invalid SQL identifier: " + name);
