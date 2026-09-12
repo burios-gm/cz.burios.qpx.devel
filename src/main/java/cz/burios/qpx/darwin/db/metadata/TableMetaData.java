@@ -12,19 +12,12 @@ public class TableMetaData {
     public String name;
     public String label;
     public final List<ColumnMetaData> columns = new ArrayList<>();
+    /** Non-primary indexes belonging to this table. */
+    public final List<IndexMetaData> indexes = new ArrayList<>();
 
-    /**
-     * Desired database-specific table options used when creating or altering a table.
-     * These are part of the table definition and may be supplied by an administrator
-     * or by an application-specific table-definition service.
-     */
+    /** Desired database-specific table options. */
     public final Map<String, Object> params = new LinkedHashMap<>();
-
-    /**
-     * Options actually discovered in the database by the dialect.
-     * Kept separate from {@link #params}: params describe the desired state,
-     * while actualParams describe the observed state.
-     */
+    /** Options actually discovered in the database by the dialect. */
     public final Map<String, Object> actualParams = new LinkedHashMap<>();
 
     public TableMetaData() {}
@@ -35,18 +28,19 @@ public class TableMetaData {
     public TableMetaData schema(String value) { this.schema = value; return this; }
     public TableMetaData name(String value) { this.name = value; return this; }
     public TableMetaData label(String value) { this.label = value; return this; }
-
-    /** Adds or replaces a desired table option. */
     public TableMetaData param(String name, Object value) { params.put(name, value); return this; }
     public TableMetaData params(Map<String, Object> values) { if (values != null) params.putAll(values); return this; }
     public TableMetaData removeParam(String name) { params.remove(name); return this; }
-
-    /** Adds or replaces an option observed in the actual database. Intended for dialects. */
     public TableMetaData actualParam(String name, Object value) { actualParams.put(name, value); return this; }
 
     public TableMetaData addColumn(ColumnMetaData column) { columns.add(column); return this; }
+    public TableMetaData addIndex(IndexMetaData index) { indexes.add(index); return this; }
     public ColumnMetaData column(String columnName) {
         for (ColumnMetaData c : columns) if (c.name != null && c.name.equalsIgnoreCase(columnName)) return c;
+        return null;
+    }
+    public IndexMetaData index(String indexName) {
+        for (IndexMetaData i : indexes) if (i.name != null && i.name.equalsIgnoreCase(indexName)) return i;
         return null;
     }
     public ColumnMetaData primaryKey() {
