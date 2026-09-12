@@ -7,15 +7,27 @@ import java.sql.SQLException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/** Database metadata cache containing all discovered tables and their columns. */
+import cz.burios.qpx.darwin.db.dialect.DBDialect;
+import cz.burios.qpx.darwin.db.dialect.DBDialects;
+
+/** Database metadata cache containing JDBC catalog/schema and discovered tables. */
 public class DBMetaData {
+    /** JDBC catalog; for MySQL this is the database name. */
+    public String catalog;
+    /** JDBC schema; used by databases such as PostgreSQL and Oracle. */
+    public String schema;
+    /** Legacy alias retained for compatibility; normally equal to catalog. */
     public String databaseName;
     public String productName;
     public String productVersion;
+    public String dialectName;
     public final Map<String, TableMetaData> tables = new LinkedHashMap<>();
 
     public DBMetaData() {}
-    public DBMetaData(String databaseName) { this.databaseName = databaseName; }
+    public DBMetaData(String databaseName) {
+        this.catalog = databaseName;
+        this.databaseName = databaseName;
+    }
 
     public TableMetaData table(String name) { return tables.get(name); }
     public DBMetaData add(TableMetaData table) { tables.put(table.name, table); return this; }
@@ -24,16 +36,26 @@ public class DBMetaData {
     public static DBMetaData load(Connection connection) throws SQLException {
         if (connection == null) throw new IllegalArgumentException("connection must not be null");
         DatabaseMetaData db = connection.getMetaData();
-        DBMetaData result = new DBMetaData(connection.getCatalog());
+        DBDialect dialect = DBDialects.forConnection(connection);
+        String catalog = dialect.catalog(connection);
+        String schema = dialect.schema(connection);
+
+        DBMetaData result = new DBMetaData();
+        result.catalog = catalog;
+        result.schema = schema;
+        result.databaseName = catalog;
         result.productName = db.getDatabaseProductName();
         result.productVersion = db.getDatabaseProductVersion();
+        result.dialectName = dialect.name();
 
-        try (ResultSet tables = db.getTables(connection.getCatalog(), null, "%", new String[] {"TABLE"})) {
+        try (ResultSet tables = db.getTables(catalog, schema, "%", new String[] {"TABLE"})) {
             while (tables.next()) {
-                String schema = tables.getString("TABLE_SCHEM");
+                String tableSchema = tables.getString("TABLE_SCHEM");
                 String name = tables.getString("TABLE_NAME");
-                TableMetaData table = new TableMetaData(name).schema(schema).database(connection.getCatalog());
-                loadColumns(db, connection.getCatalog(), schema, name, table);
+                TableMetaData table = new TableMetaData(name)
+                        .schema(tableSchema)
+                        .database(catalog);
+                loadColumns(db, catalog, tableSchema, name, table);
                 result.add(table);
             }
         }
