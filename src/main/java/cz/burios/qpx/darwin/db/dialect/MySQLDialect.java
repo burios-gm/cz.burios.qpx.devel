@@ -1,5 +1,10 @@
 package cz.burios.qpx.darwin.db.dialect;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
 import cz.burios.qpx.darwin.db.metadata.ColumnMetaData;
 import cz.burios.qpx.darwin.db.metadata.TableMetaData;
 
@@ -9,6 +14,29 @@ public class MySQLDialect implements DBDialect {
     @Override public String tableName(TableMetaData table) {
         if (table.database != null && !table.database.isBlank()) return quote(table.database) + "." + quote(table.name);
         return quote(table.name);
+    }
+    @Override public void loadTableOptions(Connection connection, String catalog, String schema, TableMetaData table) throws SQLException {
+        if (catalog == null || catalog.isBlank() || table.name == null || table.name.isBlank()) return;
+        String sql = "SELECT ENGINE, TABLE_COLLATION, TABLE_COMMENT "
+                + "FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA=? AND TABLE_NAME=?";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, catalog);
+            ps.setString(2, table.name);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) return;
+                String engine = rs.getString("ENGINE");
+                String collation = rs.getString("TABLE_COLLATION");
+                String comment = rs.getString("TABLE_COMMENT");
+                if (engine != null) table.param("ENGINE", engine);
+                if (collation != null) {
+                    int separator = collation.indexOf('_');
+                    String charset = separator > 0 ? collation.substring(0, separator) : null;
+                    if (charset != null && !charset.isBlank()) table.param("DEFAULT CHARSET", charset);
+                    table.param("COLLATE", collation);
+                }
+                if (comment != null && !comment.isBlank()) table.param("COMMENT", "'" + comment.replace("'", "''") + "'");
+            }
+        }
     }
     @Override public String columnDefinition(ColumnMetaData c) {
         StringBuilder sql = new StringBuilder(columnName(c.name)).append(' ').append(type(c));
