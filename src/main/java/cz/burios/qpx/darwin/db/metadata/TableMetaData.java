@@ -14,11 +14,18 @@ public class TableMetaData {
     public final List<ColumnMetaData> columns = new ArrayList<>();
 
     /**
-     * Database-specific table options appended to CREATE TABLE by the dialect.
-     * A LinkedHashMap keeps the SQL option order deterministic.
-     * Values are SQL fragments, e.g. ENGINE -> InnoDB, COLLATE -> utf8mb4_czech_ci.
+     * Desired database-specific table options used when creating or altering a table.
+     * These are part of the table definition and may be supplied by an administrator
+     * or by an application-specific table-definition service.
      */
     public final Map<String, Object> params = new LinkedHashMap<>();
+
+    /**
+     * Options actually discovered in the database by the dialect.
+     * Kept separate from {@link #params}: params describe the desired state,
+     * while actualParams describe the observed state.
+     */
+    public final Map<String, Object> actualParams = new LinkedHashMap<>();
 
     public TableMetaData() {}
     public TableMetaData(String name) { this.name = name; this.label = name; }
@@ -28,9 +35,14 @@ public class TableMetaData {
     public TableMetaData schema(String value) { this.schema = value; return this; }
     public TableMetaData name(String value) { this.name = value; return this; }
     public TableMetaData label(String value) { this.label = value; return this; }
+
+    /** Adds or replaces a desired table option. */
     public TableMetaData param(String name, Object value) { params.put(name, value); return this; }
     public TableMetaData params(Map<String, Object> values) { if (values != null) params.putAll(values); return this; }
     public TableMetaData removeParam(String name) { params.remove(name); return this; }
+
+    /** Adds or replaces an option observed in the actual database. Intended for dialects. */
+    public TableMetaData actualParam(String name, Object value) { actualParams.put(name, value); return this; }
 
     public TableMetaData addColumn(ColumnMetaData column) { columns.add(column); return this; }
     public ColumnMetaData column(String columnName) {
