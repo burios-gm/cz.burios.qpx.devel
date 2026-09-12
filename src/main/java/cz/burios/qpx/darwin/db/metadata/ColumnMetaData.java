@@ -16,6 +16,8 @@ public class ColumnMetaData {
     public int precision;
     /** Scale for decimal types. */
     public int scale;
+    /** Optional database collation for character columns. */
+    public String collation;
     public boolean nullable = true;
     public boolean primaryKey;
     public boolean autoIncrement;
@@ -38,7 +40,9 @@ public class ColumnMetaData {
     public ColumnMetaData bool() { return logicalType(ColumnType.BOOLEAN); }
     public ColumnMetaData integer() { return logicalType(ColumnType.INTEGER); }
     public ColumnMetaData longType() { return logicalType(ColumnType.LONG); }
-    public ColumnMetaData decimal(int precision, int scale) { return logicalType(ColumnType.DECIMAL).precision(precision).scale(scale); }
+    public ColumnMetaData decimal(int precision, int scale) {
+        return logicalType(ColumnType.DECIMAL).precision(precision).scale(scale);
+    }
     public ColumnMetaData doubleType() { return logicalType(ColumnType.DOUBLE); }
     public ColumnMetaData date() { return logicalType(ColumnType.DATE); }
     public ColumnMetaData time() { return logicalType(ColumnType.TIME); }
@@ -47,9 +51,24 @@ public class ColumnMetaData {
     public ColumnMetaData binary(int length) { return logicalType(ColumnType.BINARY).length(length); }
     public ColumnMetaData jdbcType(int value) { this.jdbcType = value; return this; }
     public ColumnMetaData jdbcTypeName(String value) { this.jdbcTypeName = value; return this; }
-    public ColumnMetaData length(int value) { if (value < 0) throw new IllegalArgumentException("length must not be negative"); this.length = value; return this; }
-    public ColumnMetaData precision(int value) { if (value < 0) throw new IllegalArgumentException("precision must not be negative"); this.precision = value; return this; }
-    public ColumnMetaData scale(int value) { if (value < 0) throw new IllegalArgumentException("scale must not be negative"); this.scale = value; return this; }
+    public ColumnMetaData length(int value) {
+        if (value < 0) throw new IllegalArgumentException("length must not be negative");
+        this.length = value;
+        return this;
+    }
+    public ColumnMetaData precision(int value) {
+        if (value < 0) throw new IllegalArgumentException("precision must not be negative");
+        if (scale > value && value > 0) throw new IllegalArgumentException("precision must not be smaller than scale");
+        this.precision = value;
+        return this;
+    }
+    public ColumnMetaData scale(int value) {
+        if (value < 0) throw new IllegalArgumentException("scale must not be negative");
+        if (precision > 0 && value > precision) throw new IllegalArgumentException("scale must not exceed precision");
+        this.scale = value;
+        return this;
+    }
+    public ColumnMetaData collation(String value) { this.collation = value; return this; }
     public ColumnMetaData nullable(boolean value) { this.nullable = value; return this; }
     public ColumnMetaData primaryKey(boolean value) { this.primaryKey = value; return this; }
     public ColumnMetaData autoIncrement(boolean value) { this.autoIncrement = value; return this; }
