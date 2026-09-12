@@ -14,7 +14,10 @@ public class ColumnMetaData {
     public boolean primaryKey;
     public boolean autoIncrement;
     public int ordinalPosition;
+    /** Ordinary SQL default expression, e.g. 0 or ''. Timestamp generation belongs to {@link #generation}. */
     public String defaultValue;
+    /** Database-independent semantic for automatic timestamp generation. */
+    public ColumnGeneration generation = ColumnGeneration.NONE;
 
     public ColumnMetaData() {}
     public ColumnMetaData(String name) { this.name = name; this.label = name; }
@@ -32,4 +35,5 @@ public class ColumnMetaData {
     public ColumnMetaData autoIncrement(boolean value) { this.autoIncrement = value; return this; }
     public ColumnMetaData ordinalPosition(int value) { this.ordinalPosition = value; return this; }
     public ColumnMetaData defaultValue(String value) { this.defaultValue = value; return this; }
+    public ColumnMetaData generation(ColumnGeneration value) { this.generation = value == null ? ColumnGeneration.NONE : value; return this; }
 }
