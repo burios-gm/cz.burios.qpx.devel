@@ -20,11 +20,28 @@ public interface DBDialect {
         return connection.getSchema();
     }
 
-    /** Renders a table name for DDL. */
+    /** Renders a table name for DDL. Dialects own catalog/schema qualification. */
     default String tableName(TableMetaData table) {
-        if (table.database != null && !table.database.isBlank()) return quote(table.database) + "." + quote(table.name);
         if (table.schema != null && !table.schema.isBlank()) return quote(table.schema) + "." + quote(table.name);
+        if (table.database != null && !table.database.isBlank()) return quote(table.database) + "." + quote(table.name);
         return quote(table.name);
+    }
+
+    /**
+     * Renders options following a CREATE TABLE definition.
+     * The default convention is KEY=VALUE for every metadata parameter.
+     */
+    default String tableOptions(TableMetaData table) {
+        if (table.params.isEmpty()) return "";
+        StringBuilder sql = new StringBuilder();
+        for (var entry : table.params.entrySet()) {
+            if (entry.getKey() == null || entry.getKey().isBlank())
+                throw new IllegalArgumentException("Table option name must not be blank");
+            if (entry.getValue() == null) continue;
+            if (sql.length() > 0) sql.append(' ');
+            sql.append(entry.getKey()).append('=').append(entry.getValue());
+        }
+        return sql.length() == 0 ? "" : " " + sql;
     }
 
     default String columnName(String name) { return quote(name); }
