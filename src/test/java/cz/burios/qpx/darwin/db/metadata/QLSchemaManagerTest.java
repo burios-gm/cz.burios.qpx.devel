@@ -29,26 +29,29 @@ public class QLSchemaManagerTest {
             if (loaded.column("PRICE").logicalType != ColumnType.DECIMAL) throw new AssertionError("PRICE logical type: " + loaded.column("PRICE").logicalType);
             if (loaded.indexes.size() != 1 || !"IX_DYN_STORE_NAME".equalsIgnoreCase(loaded.indexes.get(0).name)) throw new AssertionError("Secondary index was not loaded: " + loaded.indexes);
             if (!loaded.indexes.get(0).columns.equals(java.util.List.of("NAME"))) throw new AssertionError("Index columns were not loaded: " + loaded.indexes.get(0).columns);
+            if (loaded.indexes.get(0).unique) throw new AssertionError("Initial index should not be unique");
 
             TableMetaData desiredTable = new TableMetaData("DYN_STORE");
             desiredTable.addColumn(new ColumnMetaData("ID").longType().nullable(false).primaryKey(true).autoIncrement(true));
             desiredTable.addColumn(new ColumnMetaData("NAME").string(80).nullable(false));
             desiredTable.addColumn(new ColumnMetaData("PRICE").decimal(14, 3));
             desiredTable.addColumn(new ColumnMetaData("ACTIVE").bool().nullable(false));
-            desiredTable.addIndex(new IndexMetaData("IX_DYN_STORE_NAME").column("NAME"));
+            desiredTable.addIndex(new IndexMetaData("IX_DYN_STORE_NAME").unique(true).column("NAME").column("ID"));
             DBMetaData desired = new DBMetaData().add(desiredTable);
 
             SchemaDiff diff = SchemaDiff.compare(actual, desired);
             if (diff.isEmpty()) throw new AssertionError("Expected schema changes");
-            if (diff.size() != 3) throw new AssertionError("Expected 3 changes, got: " + diff);
+            if (diff.size() != 5) throw new AssertionError("Expected 5 changes, got: " + diff);
 
-            boolean nameAlter = false, priceAlter = false, activeAdd = false;
+            boolean nameAlter = false, priceAlter = false, activeAdd = false, indexDrop = false, indexCreate = false;
             for (SchemaChange change : diff.changes()) {
                 if (change.type() == SchemaChange.Type.ALTER_COLUMN && "NAME".equalsIgnoreCase(change.column().name)) nameAlter = true;
                 if (change.type() == SchemaChange.Type.ALTER_COLUMN && "PRICE".equalsIgnoreCase(change.column().name)) priceAlter = true;
                 if (change.type() == SchemaChange.Type.ADD_COLUMN && "ACTIVE".equalsIgnoreCase(change.column().name)) activeAdd = true;
+                if (change.type() == SchemaChange.Type.DROP_INDEX && "IX_DYN_STORE_NAME".equalsIgnoreCase(change.indexName())) indexDrop = true;
+                if (change.type() == SchemaChange.Type.CREATE_INDEX && "IX_DYN_STORE_NAME".equalsIgnoreCase(change.index().name)) indexCreate = true;
             }
-            if (!nameAlter || !priceAlter || !activeAdd) throw new AssertionError("Unexpected diff: " + diff);
+            if (!nameAlter || !priceAlter || !activeAdd || !indexDrop || !indexCreate) throw new AssertionError("Unexpected diff: " + diff);
 
             diff.apply(connection, manager);
             DBMetaData migrated = DBMetaData.load(connection);
@@ -61,9 +64,23 @@ public class QLSchemaManagerTest {
             ColumnMetaData active = migratedTable.column("ACTIVE");
             if (active == null || active.logicalType != ColumnType.BOOLEAN || active.nullable) throw new AssertionError("ACTIVE was not added correctly: " + describe(active));
             if (migratedTable.indexes.size() != 1 || !"IX_DYN_STORE_NAME".equalsIgnoreCase(migratedTable.indexes.get(0).name)) throw new AssertionError("Index disappeared after migration");
+            if (!migratedTable.indexes.get(0).unique) throw new AssertionError("Index was not recreated as unique");
+            if (!migratedTable.indexes.get(0).columns.equals(java.util.List.of("NAME", "ID"))) throw new AssertionError("Index columns were not recreated: " + migratedTable.indexes.get(0).columns);
 
             SchemaDiff after = SchemaDiff.compare(migrated, desired);
             if (!after.isEmpty()) throw new AssertionError("Migration did not converge: " + after);
+
+            // Method changes are represented as DROP + CREATE as well. H2's JDBC metadata
+            // does not expose a portable index method, so this part verifies the diff only.
+            TableMetaData methodActualTable = new TableMetaData("METHOD_TEST");
+            methodActualTable.addIndex(new IndexMetaData("IX_METHOD").method("BTREE").column("NAME"));
+            TableMetaData methodDesiredTable = new TableMetaData("METHOD_TEST");
+            methodDesiredTable.addIndex(new IndexMetaData("IX_METHOD").method("HASH").column("NAME"));
+            SchemaDiff methodDiff = SchemaDiff.compare(new DBMetaData().add(methodActualTable), new DBMetaData().add(methodDesiredTable));
+            if (methodDiff.size() != 2 || methodDiff.changes().get(0).type() != SchemaChange.Type.DROP_INDEX || methodDiff.changes().get(1).type() != SchemaChange.Type.CREATE_INDEX) {
+                throw new AssertionError("Index method change was not represented as DROP + CREATE: " + methodDiff);
+            }
+
             manager.dropIndex(connection, migratedTable, "IX_DYN_STORE_NAME");
             if (!DBMetaData.load(connection).table("DYN_STORE").indexes.isEmpty()) throw new AssertionError("Index was not dropped");
             manager.dropColumn(connection, migratedTable, "ACTIVE");
