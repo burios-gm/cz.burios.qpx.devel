@@ -2,6 +2,7 @@ package cz.burios.qpx.darwin.db.dialect;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.List;
 
 import cz.burios.qpx.darwin.db.metadata.ColumnMetaData;
 import cz.burios.qpx.darwin.db.metadata.ColumnType;
@@ -54,6 +55,13 @@ public interface DBDialect {
     }
     default String alterColumn(TableMetaData table, ColumnMetaData column) {
         throw new UnsupportedOperationException("Column alteration is not supported by dialect: " + name());
+    }
+    /**
+     * SQL statements needed to alter one column. Most dialects can do this in one statement;
+     * dialects such as H2 may need several independent ALTER COLUMN statements.
+     */
+    default List<String> alterColumnStatements(TableMetaData table, ColumnMetaData column) {
+        return List.of(alterColumn(table, column));
     }
 
     /** SQL for creating one secondary index. */
