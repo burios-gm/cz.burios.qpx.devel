@@ -19,7 +19,6 @@ public class DBMetaData {
     public String productVersion;
     public String dialectName;
     public final Map<String, TableMetaData> tables = new LinkedHashMap<>();
-
     public DBMetaData() {}
     public DBMetaData(String databaseName) { this.catalog = databaseName; this.databaseName = databaseName; }
     public TableMetaData table(String name) { return tables.get(name); }
@@ -30,15 +29,13 @@ public class DBMetaData {
         if (connection == null) throw new IllegalArgumentException("connection must not be null");
         DatabaseMetaData db = connection.getMetaData();
         DBDialect dialect = DBDialects.forConnection(connection);
-        String catalog = dialect.catalog(connection);
-        String schema = dialect.schema(connection);
+        String catalog = dialect.catalog(connection), schema = dialect.schema(connection);
         DBMetaData result = new DBMetaData();
         result.catalog = catalog; result.schema = schema; result.databaseName = catalog;
         result.productName = db.getDatabaseProductName(); result.productVersion = db.getDatabaseProductVersion(); result.dialectName = dialect.name();
         try (ResultSet tables = db.getTables(catalog, schema, "%", new String[] {"TABLE"})) {
             while (tables.next()) {
-                String tableSchema = tables.getString("TABLE_SCHEM");
-                String name = tables.getString("TABLE_NAME");
+                String tableSchema = tables.getString("TABLE_SCHEM"), name = tables.getString("TABLE_NAME");
                 TableMetaData table = new TableMetaData(name).schema(tableSchema).database(catalog);
                 loadColumns(db, connection, dialect, catalog, tableSchema, name, table);
                 loadIndexes(db, catalog, tableSchema, name, table);
@@ -48,21 +45,15 @@ public class DBMetaData {
         }
         return result;
     }
-
-    private static void loadColumns(DatabaseMetaData db, Connection connection, DBDialect dialect,
-            String catalog, String schema, String tableName, TableMetaData table) throws SQLException {
+    private static void loadColumns(DatabaseMetaData db, Connection connection, DBDialect dialect, String catalog, String schema, String tableName, TableMetaData table) throws SQLException {
         Map<String, ColumnMetaData> columns = new LinkedHashMap<>();
         try (ResultSet rs = db.getColumns(catalog, schema, tableName, "%")) {
             while (rs.next()) {
                 ColumnMetaData c = new ColumnMetaData();
-                c.name = rs.getString("COLUMN_NAME"); c.label = c.name;
-                c.type = rs.getString("TYPE_NAME"); c.jdbcType = rs.getInt("DATA_TYPE"); c.jdbcTypeName = rs.getString("TYPE_NAME");
-                c.length = rs.getInt("COLUMN_SIZE"); c.precision = c.length; c.scale = rs.getInt("DECIMAL_DIGITS");
-                c.nullable = "YES".equalsIgnoreCase(rs.getString("IS_NULLABLE")); c.ordinalPosition = rs.getInt("ORDINAL_POSITION");
-                c.defaultValue = rs.getString("COLUMN_DEF"); c.autoIncrement = "YES".equalsIgnoreCase(rs.getString("IS_AUTOINCREMENT"));
-                c.logicalType = dialect.logicalType(c);
-                dialect.loadColumnOptions(connection, catalog, schema, tableName, c);
-                columns.put(c.name, c);
+                c.name = rs.getString("COLUMN_NAME"); c.label = c.name; c.type = rs.getString("TYPE_NAME"); c.jdbcType = rs.getInt("DATA_TYPE"); c.jdbcTypeName = rs.getString("TYPE_NAME");
+                c.length = rs.getInt("COLUMN_SIZE"); c.precision = c.length; c.scale = rs.getInt("DECIMAL_DIGITS"); c.nullable = "YES".equalsIgnoreCase(rs.getString("IS_NULLABLE")); c.ordinalPosition = rs.getInt("ORDINAL_POSITION");
+                c.defaultValue = rs.getString("COLUMN_DEF"); c.autoIncrement = "YES".equalsIgnoreCase(rs.getString("IS_AUTOINCREMENT")); c.logicalType = dialect.logicalType(c);
+                dialect.loadColumnOptions(connection, catalog, schema, tableName, c); columns.put(c.name, c);
             }
         }
         try (ResultSet rs = db.getPrimaryKeys(catalog, schema, tableName)) {
@@ -70,26 +61,21 @@ public class DBMetaData {
         }
         table.columns.clear(); table.columns.addAll(columns.values());
     }
-
     private static void loadIndexes(DatabaseMetaData db, String catalog, String schema, String tableName, TableMetaData table) throws SQLException {
         Map<String, IndexMetaData> indexes = new LinkedHashMap<>();
         try (ResultSet rs = db.getIndexInfo(catalog, schema, tableName, false, false)) {
             while (rs.next()) {
-                String name = rs.getString("INDEX_NAME");
-                String column = rs.getString("COLUMN_NAME");
-                if (name == null || column == null) continue;
-                String indexType = rs.getString("TYPE");
+                String name = rs.getString("INDEX_NAME"), column = rs.getString("COLUMN_NAME");
+                if (name == null || column == null || isPrimaryIndex(name)) continue;
                 IndexMetaData index = indexes.get(name);
-                if (index == null) {
-                    index = new IndexMetaData(name)
-                            .unique(!rs.getBoolean("NON_UNIQUE"))
-                            .type(indexType);
-                    indexes.put(name, index);
-                }
+                if (index == null) { index = new IndexMetaData(name).unique(!rs.getBoolean("NON_UNIQUE")).type(rs.getString("TYPE")); indexes.put(name, index); }
                 index.column(column);
             }
         }
-        table.indexes.clear();
-        table.indexes.addAll(indexes.values());
+        table.indexes.clear(); table.indexes.addAll(indexes.values());
+    }
+    private static boolean isPrimaryIndex(String name) {
+        String n = name.toUpperCase(java.util.Locale.ROOT);
+        return "PRIMARY".equals(n) || n.startsWith("PRIMARY_KEY") || n.startsWith("SQLITE_AUTOINDEX");
     }
 }
