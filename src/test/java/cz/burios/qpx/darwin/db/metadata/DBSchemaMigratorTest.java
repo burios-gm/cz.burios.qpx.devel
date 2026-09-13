@@ -20,9 +20,10 @@ public class DBSchemaMigratorTest {
             if (createSql.size() != 2 || !createSql.get(0).startsWith("CREATE TABLE") || !createSql.get(1).contains("IX_STORE_NAME"))
                 throw new AssertionError("Expected table and index SQL: " + createSql);
 
-            SchemaDiff applied = migrator.migrate(connection, desired);
+            SchemaDiff applied = migrator.migrateTransactional(connection, desired);
             if (applied.size() != 1 || applied.changes().get(0).type() != SchemaChange.Type.CREATE_TABLE)
                 throw new AssertionError("Unexpected applied plan: " + applied);
+            if (!connection.getAutoCommit()) throw new AssertionError("Auto-commit was not restored");
 
             if (!migrator.plan(connection, desired).isEmpty())
                 throw new AssertionError("Schema should be synchronized after migration");
@@ -32,7 +33,7 @@ public class DBSchemaMigratorTest {
             SchemaDiff alterPlan = migrator.plan(connection, changed);
             if (alterPlan.size() != 1 || alterPlan.changes().get(0).type() != SchemaChange.Type.ADD_COLUMN)
                 throw new AssertionError("Expected ADD_COLUMN plan: " + alterPlan);
-            migrator.migrate(connection, changed);
+            migrator.migrateTransactional(connection, changed);
             if (DBMetaData.load(connection).table("STORE").column("ACTIVE") == null)
                 throw new AssertionError("ACTIVE was not migrated");
 
@@ -56,11 +57,13 @@ public class DBSchemaMigratorTest {
             SchemaDiff dropPlan = migrator.plan(connection, destructive, true);
             if (dropPlan.size() != 1 || dropPlan.changes().get(0).type() != SchemaChange.Type.DROP_TABLE)
                 throw new AssertionError("Expected DROP_TABLE only with includeDrops=true: " + dropPlan);
-            migrator.migrate(connection, destructive, true);
+            migrator.migrateTransactional(connection, destructive, true);
             if (DBMetaData.load(connection).table("STORE") != null)
                 throw new AssertionError("STORE was not dropped");
 
             expectInvalidIndexDependency();
+            expectTransactionalRequiresAutoCommit(migrator);
+            expectRollback(migrator);
         }
         System.out.println("DBSchemaMigratorTest: OK");
     }
@@ -81,6 +84,37 @@ public class DBSchemaMigratorTest {
             throw new AssertionError("Missing index column should be rejected");
         } catch (IllegalArgumentException expected) {
             if (!expected.getMessage().contains("missing column")) throw expected;
+        }
+    }
+
+    private static void expectTransactionalRequiresAutoCommit(DBSchemaMigrator migrator) throws Exception {
+        try (Connection connection = DriverManager.getConnection("jdbc:h2:mem:schema_migrator_tx_state;DB_CLOSE_DELAY=-1")) {
+            connection.setAutoCommit(false);
+            try {
+                migrator.migrateTransactional(connection, desiredSchema());
+                throw new AssertionError("Transactional migration should reject an active caller transaction");
+            } catch (IllegalStateException expected) {
+                // expected
+            } finally {
+                connection.rollback();
+                connection.setAutoCommit(true);
+            }
+        }
+    }
+
+    private static void expectRollback(DBSchemaMigrator migrator) throws Exception {
+        try (Connection connection = DriverManager.getConnection("jdbc:h2:mem:schema_migrator_rollback;DB_CLOSE_DELAY=-1")) {
+            DBMetaData desired = new DBMetaData()
+                    .add(new TableMetaData("FIRST").addColumn(new ColumnMetaData("ID").type("BIGINT")))
+                    .add(new TableMetaData("SECOND").addColumn(new ColumnMetaData("ID").type("THIS_TYPE_DOES_NOT_EXIST")));
+            try {
+                migrator.migrateTransactional(connection, desired);
+                throw new AssertionError("Invalid DDL should fail");
+            } catch (Exception expected) {
+                if (DBMetaData.load(connection).table("FIRST") != null)
+                    throw new AssertionError("Transactional migration did not roll back FIRST");
+                if (!connection.getAutoCommit()) throw new AssertionError("Auto-commit was not restored after rollback");
+            }
         }
     }
 }
