@@ -1,6 +1,8 @@
 package cz.burios.qpx.darwin.db.dialect;
 
 import java.sql.Types;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 import cz.burios.qpx.darwin.db.metadata.ColumnMetaData;
@@ -49,14 +51,19 @@ public class H2Dialect implements DBDialect {
         return sql.toString();
     }
 
+    /** H2 accepts one ALTER COLUMN operation per statement. */
     @Override public String alterColumn(TableMetaData table, ColumnMetaData c) {
-        StringBuilder sql = new StringBuilder("ALTER TABLE ").append(tableName(table))
-                .append(" ALTER COLUMN ").append(columnName(c.name)).append(" ").append(type(c));
-        if (c.nullable) sql.append(", ALTER COLUMN ").append(columnName(c.name)).append(" DROP NOT NULL");
-        else sql.append(", ALTER COLUMN ").append(columnName(c.name)).append(" SET NOT NULL");
-        if (c.defaultValue != null) sql.append(", ALTER COLUMN ").append(columnName(c.name)).append(" SET DEFAULT ").append(c.defaultValue);
-        else sql.append(", ALTER COLUMN ").append(columnName(c.name)).append(" DROP DEFAULT");
-        return sql.toString();
+        return "ALTER TABLE " + tableName(table) + " ALTER COLUMN " + columnName(c.name) + " " + type(c);
+    }
+
+    @Override public List<String> alterColumnStatements(TableMetaData table, ColumnMetaData c) {
+        List<String> sql = new ArrayList<>();
+        sql.add(alterColumn(table, c));
+        sql.add("ALTER TABLE " + tableName(table) + " ALTER COLUMN " + columnName(c.name)
+                + (c.nullable ? " DROP NOT NULL" : " SET NOT NULL"));
+        sql.add("ALTER TABLE " + tableName(table) + " ALTER COLUMN " + columnName(c.name)
+                + (c.defaultValue != null ? " SET DEFAULT " + c.defaultValue : " DROP DEFAULT"));
+        return sql;
     }
 
     private String type(ColumnMetaData c) {
