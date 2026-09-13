@@ -5,6 +5,10 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 import cz.burios.qpx.darwin.db.dialect.DBDialect;
+import cz.burios.qpx.darwin.db.dialect.H2Dialect;
+import cz.burios.qpx.darwin.db.dialect.MySQLDialect;
+import cz.burios.qpx.darwin.db.dialect.PostgreSQLDialect;
+import cz.burios.qpx.darwin.db.dialect.SQLiteDialect;
 
 /** Runtime DDL facade. The dialect owns database-specific SQL details. */
 public class DBSchemaManager {
@@ -28,19 +32,16 @@ public class DBSchemaManager {
         execute(connection, sql.toString());
         for (IndexMetaData index : table.indexes) createIndex(connection, table, index);
     }
-
     public void addColumn(Connection connection, TableMetaData table, ColumnMetaData column) throws SQLException {
         require(table);
         if (column == null || column.name == null || column.name.isBlank()) throw new IllegalArgumentException("column is required");
         execute(connection, "ALTER TABLE " + dialect.tableName(table) + " ADD COLUMN " + dialect.columnDefinition(column));
     }
     public void dropColumn(Connection connection, TableMetaData table, String column) throws SQLException {
-        require(table);
-        execute(connection, "ALTER TABLE " + dialect.tableName(table) + " DROP COLUMN " + dialect.columnName(column));
+        require(table); execute(connection, "ALTER TABLE " + dialect.tableName(table) + " DROP COLUMN " + dialect.columnName(column));
     }
     public void dropTable(Connection connection, TableMetaData table) throws SQLException {
-        require(table);
-        execute(connection, "DROP TABLE " + dialect.tableName(table));
+        require(table); execute(connection, "DROP TABLE " + dialect.tableName(table));
     }
     public void alterColumn(Connection connection, TableMetaData table, ColumnMetaData column) throws SQLException {
         require(table);
@@ -48,20 +49,32 @@ public class DBSchemaManager {
         execute(connection, dialect.alterColumn(table, column));
     }
     public void alterTableParams(Connection connection, TableMetaData table) throws SQLException {
-        require(table);
-        String sql = dialect.alterTableOptions(table);
-        if (sql != null && !sql.isBlank()) execute(connection, sql);
+        require(table); String sql = dialect.alterTableOptions(table); if (sql != null && !sql.isBlank()) execute(connection, sql);
     }
     public void createIndex(Connection connection, TableMetaData table, IndexMetaData index) throws SQLException {
         require(table);
         if (index == null || index.name == null || index.name.isBlank()) throw new IllegalArgumentException("index is required");
         if (index.columns.isEmpty()) throw new IllegalArgumentException("index must contain at least one column");
-        execute(connection, dialect.createIndex(table, index));
+        StringBuilder sql = new StringBuilder("CREATE ");
+        if (index.unique) sql.append("UNIQUE ");
+        sql.append("INDEX ").append(dialect.quote(index.name)).append(" ON ").append(dialect.tableName(table)).append(" (");
+        for (int i = 0; i < index.columns.size(); i++) {
+            if (i > 0) sql.append(", ");
+            sql.append(dialect.columnName(index.columns.get(i)));
+        }
+        sql.append(')');
+        if (index.method != null && !index.method.isBlank()) {
+            if (dialect instanceof MySQLDialect) sql.append(" USING ").append(index.method);
+            else if (dialect instanceof PostgreSQLDialect) sql.insert(0, "CREATE " + (index.unique ? "UNIQUE " : "") + "INDEX " + dialect.quote(index.name) + " ON " + dialect.tableName(table) + " USING " + index.method + " (").append(')');
+        }
+        execute(connection, sql.toString());
     }
     public void dropIndex(Connection connection, TableMetaData table, String indexName) throws SQLException {
         require(table);
         if (indexName == null || indexName.isBlank()) throw new IllegalArgumentException("index name is required");
-        execute(connection, dialect.dropIndex(table, indexName));
+        String sql = "DROP INDEX " + dialect.quote(indexName);
+        if (dialect instanceof MySQLDialect) sql += " ON " + dialect.tableName(table);
+        execute(connection, sql);
     }
 
     private void appendPrimaryKey(StringBuilder sql, TableMetaData table) {
