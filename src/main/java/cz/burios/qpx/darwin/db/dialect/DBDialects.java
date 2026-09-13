@@ -14,7 +14,7 @@ public final class DBDialects {
         if (normalized.contains("mysql")) return new MySQLDialect();
         if (normalized.contains("postgresql")) return new PostgreSQLDialect();
         if (normalized.contains("h2")) return new H2Dialect();
-        if (normalized.contains("sqlite")) return new SQLiteDialect();
+        if (normalized.contains("microsoft sql server") || normalized.contains("sql server")) return new MSSQLDialect();
         throw new IllegalArgumentException("No SQL dialect registered for database: " + product);
     }
 }
