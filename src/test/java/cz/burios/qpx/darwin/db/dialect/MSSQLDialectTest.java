@@ -25,10 +25,10 @@ public class MSSQLDialectTest {
         String nameSql = dialect.columnDefinition(name);
         if (!"[NAME] VARCHAR(80) NOT NULL".equals(nameSql)) throw new AssertionError("Unexpected NAME SQL: " + nameSql);
 
-        ColumnMetaData created = new ColumnMetaData("CREATED_AT").type(ColumnType.DATETIME).generation(ColumnGeneration.INSERT_TIMESTAMP);
+        ColumnMetaData created = new ColumnMetaData("CREATED_AT").datetime().generation(ColumnGeneration.INSERT_TIMESTAMP);
         if (!"[CREATED_AT] DATETIME2 DEFAULT CURRENT_TIMESTAMP".equals(dialect.columnDefinition(created))) throw new AssertionError("Unexpected INSERT timestamp SQL");
 
-        ColumnMetaData updated = new ColumnMetaData("UPDATED_AT").type(ColumnType.DATETIME).generation(ColumnGeneration.INSERT_UPDATE_TIMESTAMP);
+        ColumnMetaData updated = new ColumnMetaData("UPDATED_AT").datetime().generation(ColumnGeneration.INSERT_UPDATE_TIMESTAMP);
         boolean unsupported = false;
         try {
             dialect.columnGeneration(updated);
