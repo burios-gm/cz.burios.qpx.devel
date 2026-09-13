@@ -1,5 +1,9 @@
 package cz.burios.qpx.darwin.db.dialect;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Types;
 import java.util.Locale;
 import cz.burios.qpx.darwin.db.metadata.ColumnGeneration;
@@ -13,6 +17,7 @@ public class PostgreSQLDialect implements DBDialect {
  @Override public String name(){return "postgresql";}
  @Override public String tableName(TableMetaData t){return t.schema!=null&&!t.schema.isBlank()?quote(t.schema)+"."+quote(t.name):quote(t.name);}
  @Override public String quote(String n){if(n==null||!n.matches("[A-Za-z_][A-Za-z0-9_$]*"))throw new IllegalArgumentException("Invalid SQL identifier: "+n);return "\""+n+"\"";}
+ @Override public void loadIndexOptions(Connection c,String catalog,String schema,String tableName,IndexMetaData index)throws SQLException{if(schema==null||schema.isBlank()||index==null||index.name==null)return;String sql="SELECT am.amname FROM pg_catalog.pg_class i JOIN pg_catalog.pg_namespace n ON n.oid=i.relnamespace JOIN pg_catalog.pg_am am ON am.oid=i.relam WHERE n.nspname=? AND i.relname=? AND i.relkind='i'";try(PreparedStatement p=c.prepareStatement(sql)){p.setString(1,schema);p.setString(2,index.name);try(ResultSet r=p.executeQuery()){if(r.next()){String method=r.getString(1);if(method!=null&&!method.isBlank())index.method(method.toUpperCase(Locale.ROOT));}}}}
  @Override public String tableOptions(TableMetaData t){if(t.params.isEmpty())return "";StringBuilder s=new StringBuilder();for(var e:t.params.entrySet())if(e.getValue()!=null){if(s.length()>0)s.append(' ');String k=e.getKey().trim().toUpperCase(Locale.ROOT);if(k.equals("TABLESPACE"))s.append("TABLESPACE ").append(e.getValue());else if(k.equals("WITH"))s.append("WITH ").append(e.getValue());else s.append(e.getKey()).append('=').append(e.getValue());}return s.length()==0?"":" "+s;}
  @Override public ColumnType logicalType(ColumnMetaData c){String n=c.jdbcTypeName!=null?c.jdbcTypeName:c.type;if(n!=null){String t=n.toUpperCase(Locale.ROOT);if(t.contains("CHAR"))return ColumnType.STRING;if(t.equals("TEXT"))return ColumnType.TEXT;if(t.equals("BOOL")||t.equals("BOOLEAN"))return ColumnType.BOOLEAN;if(t.equals("BIGINT")||t.equals("BIGSERIAL"))return ColumnType.LONG;if(t.equals("INT")||t.equals("INTEGER")||t.equals("SERIAL")||t.equals("SMALLINT")||t.equals("SMALLSERIAL"))return ColumnType.INTEGER;if(t.startsWith("NUMERIC")||t.startsWith("DECIMAL"))return ColumnType.DECIMAL;if(t.contains("DOUBLE")||t.equals("REAL"))return ColumnType.DOUBLE;if(t.startsWith("TIMESTAMP"))return ColumnType.TIMESTAMP;if(t.startsWith("TIME"))return ColumnType.TIME;if(t.startsWith("DATE"))return ColumnType.DATE;if(t.equals("BYTEA"))return ColumnType.BINARY;}return DBDialect.super.logicalType(c);}
  @Override public String columnDefinition(ColumnMetaData c){StringBuilder s=new StringBuilder(columnName(c.name)).append(' ').append(type(c));if(!c.nullable)s.append(" NOT NULL");String g=columnGeneration(c);if(!g.isBlank())s.append(' ').append(g);else if(c.defaultValue!=null)s.append(" DEFAULT ").append(c.defaultValue);return s.toString();}
