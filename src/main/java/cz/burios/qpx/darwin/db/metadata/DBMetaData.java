@@ -4,8 +4,10 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 
 import cz.burios.qpx.darwin.db.dialect.DBDialect;
 import cz.burios.qpx.darwin.db.dialect.DBDialects;
@@ -62,20 +64,26 @@ public class DBMetaData {
         table.columns.clear(); table.columns.addAll(columns.values());
     }
     private static void loadIndexes(DatabaseMetaData db, String catalog, String schema, String tableName, TableMetaData table) throws SQLException {
+        Set<String> primaryIndexNames = new HashSet<>();
+        try (ResultSet rs = db.getPrimaryKeys(catalog, schema, tableName)) {
+            while (rs.next()) {
+                String name = rs.getString("PK_NAME");
+                if (name != null && !name.isBlank()) primaryIndexNames.add(name);
+            }
+        }
         Map<String, IndexMetaData> indexes = new LinkedHashMap<>();
         try (ResultSet rs = db.getIndexInfo(catalog, schema, tableName, false, false)) {
             while (rs.next()) {
                 String name = rs.getString("INDEX_NAME"), column = rs.getString("COLUMN_NAME");
-                if (name == null || column == null || isPrimaryIndex(name)) continue;
+                if (name == null || column == null || primaryIndexNames.contains(name)) continue;
                 IndexMetaData index = indexes.get(name);
-                if (index == null) { index = new IndexMetaData(name).unique(!rs.getBoolean("NON_UNIQUE")).type(rs.getString("TYPE")); indexes.put(name, index); }
+                if (index == null) {
+                    index = new IndexMetaData(name).unique(!rs.getBoolean("NON_UNIQUE")).type(rs.getString("TYPE"));
+                    indexes.put(name, index);
+                }
                 index.column(column);
             }
         }
         table.indexes.clear(); table.indexes.addAll(indexes.values());
-    }
-    private static boolean isPrimaryIndex(String name) {
-        String n = name.toUpperCase(java.util.Locale.ROOT);
-        return "PRIMARY".equals(n) || n.startsWith("PRIMARY_KEY") || n.startsWith("SQLITE_AUTOINDEX");
     }
 }
