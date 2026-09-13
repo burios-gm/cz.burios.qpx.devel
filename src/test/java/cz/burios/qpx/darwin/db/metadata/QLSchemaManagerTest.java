@@ -16,6 +16,7 @@ public class QLSchemaManagerTest {
             initial.addColumn(new ColumnMetaData("ID").longType().nullable(false).primaryKey(true).autoIncrement(true));
             initial.addColumn(new ColumnMetaData("NAME").string(120).nullable(true));
             initial.addColumn(new ColumnMetaData("PRICE").decimal(12, 2));
+            initial.addIndex(new IndexMetaData("IX_DYN_STORE_NAME").column("NAME"));
             manager.createTable(connection, initial);
 
             DBMetaData actual = DBMetaData.load(connection);
@@ -26,12 +27,15 @@ public class QLSchemaManagerTest {
             if (loaded.column("ID").logicalType != ColumnType.LONG) throw new AssertionError("ID logical type: " + loaded.column("ID").logicalType);
             if (loaded.column("NAME").logicalType != ColumnType.STRING) throw new AssertionError("NAME logical type: " + loaded.column("NAME").logicalType);
             if (loaded.column("PRICE").logicalType != ColumnType.DECIMAL) throw new AssertionError("PRICE logical type: " + loaded.column("PRICE").logicalType);
+            if (loaded.indexes.size() != 1 || !"IX_DYN_STORE_NAME".equalsIgnoreCase(loaded.indexes.get(0).name)) throw new AssertionError("Secondary index was not loaded: " + loaded.indexes);
+            if (!loaded.indexes.get(0).columns.equals(java.util.List.of("NAME"))) throw new AssertionError("Index columns were not loaded: " + loaded.indexes.get(0).columns);
 
             TableMetaData desiredTable = new TableMetaData("DYN_STORE");
             desiredTable.addColumn(new ColumnMetaData("ID").longType().nullable(false).primaryKey(true).autoIncrement(true));
             desiredTable.addColumn(new ColumnMetaData("NAME").string(80).nullable(false));
             desiredTable.addColumn(new ColumnMetaData("PRICE").decimal(14, 3));
             desiredTable.addColumn(new ColumnMetaData("ACTIVE").bool().nullable(false));
+            desiredTable.addIndex(new IndexMetaData("IX_DYN_STORE_NAME").column("NAME"));
             DBMetaData desired = new DBMetaData().add(desiredTable);
 
             SchemaDiff diff = SchemaDiff.compare(actual, desired);
@@ -56,9 +60,12 @@ public class QLSchemaManagerTest {
             if (price == null || price.logicalType != ColumnType.DECIMAL || price.precision != 14 || price.scale != 3) throw new AssertionError("PRICE was not migrated correctly: " + describe(price));
             ColumnMetaData active = migratedTable.column("ACTIVE");
             if (active == null || active.logicalType != ColumnType.BOOLEAN || active.nullable) throw new AssertionError("ACTIVE was not added correctly: " + describe(active));
+            if (migratedTable.indexes.size() != 1 || !"IX_DYN_STORE_NAME".equalsIgnoreCase(migratedTable.indexes.get(0).name)) throw new AssertionError("Index disappeared after migration");
 
             SchemaDiff after = SchemaDiff.compare(migrated, desired);
             if (!after.isEmpty()) throw new AssertionError("Migration did not converge: " + after);
+            manager.dropIndex(connection, migratedTable, "IX_DYN_STORE_NAME");
+            if (!DBMetaData.load(connection).table("DYN_STORE").indexes.isEmpty()) throw new AssertionError("Index was not dropped");
             manager.dropColumn(connection, migratedTable, "ACTIVE");
             if (DBMetaData.load(connection).table("DYN_STORE").column("ACTIVE") != null) throw new AssertionError("ACTIVE was not dropped");
             manager.dropTable(connection, migratedTable);
