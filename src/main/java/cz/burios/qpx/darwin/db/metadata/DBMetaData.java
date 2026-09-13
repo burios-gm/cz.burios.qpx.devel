@@ -6,6 +6,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -68,14 +69,14 @@ public class DBMetaData {
         try (ResultSet rs = db.getPrimaryKeys(catalog, schema, tableName)) {
             while (rs.next()) {
                 String name = rs.getString("PK_NAME");
-                if (name != null && !name.isBlank()) primaryIndexNames.add(name);
+                if (name != null && !name.isBlank()) primaryIndexNames.add(name.toLowerCase(Locale.ROOT));
             }
         }
         Map<String, IndexMetaData> indexes = new LinkedHashMap<>();
         try (ResultSet rs = db.getIndexInfo(catalog, schema, tableName, false, false)) {
             while (rs.next()) {
                 String name = rs.getString("INDEX_NAME"), column = rs.getString("COLUMN_NAME");
-                if (name == null || column == null || primaryIndexNames.contains(name)) continue;
+                if (name == null || column == null || primaryIndexNames.contains(name.toLowerCase(Locale.ROOT))) continue;
                 IndexMetaData index = indexes.get(name);
                 if (index == null) {
                     index = new IndexMetaData(name).unique(!rs.getBoolean("NON_UNIQUE")).type(rs.getString("TYPE"));
