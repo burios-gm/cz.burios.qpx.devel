@@ -21,7 +21,7 @@ public class DialectDdlTest {
         if(!"`depo_cz`.`STORE`".equals(d.tableName(t)))throw new AssertionError("MySQL table name: "+d.tableName(t));
         ColumnMetaData c=name().collation("utf8_czech_ci");
         if(!"`NAME` VARCHAR(80) NOT NULL COLLATE utf8_czech_ci".equals(d.columnDefinition(c)))throw new AssertionError("MySQL column: "+d.columnDefinition(c));
-        c=new ColumnMetaData("UPDATED_AT").dateTime().nullable(false).generation(ColumnGeneration.INSERT_UPDATE_TIMESTAMP);
+        c=new ColumnMetaData("UPDATED_AT").datetime().nullable(false).generation(ColumnGeneration.INSERT_UPDATE_TIMESTAMP);
         if(!"`UPDATED_AT` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP".equals(d.columnDefinition(c)))throw new AssertionError("MySQL generated column: "+d.columnDefinition(c));
         if(!"CREATE UNIQUE INDEX `IX_STORE_NAME` ON `depo_cz`.`STORE` (`NAME`, `ID`) USING BTREE".equals(d.createIndex(t,index())))throw new AssertionError("MySQL index: "+d.createIndex(t,index()));
         if(!"DROP INDEX `IX_STORE_NAME` ON `depo_cz`.`STORE`".equals(d.dropIndex(t,index().name)))throw new AssertionError("MySQL drop index");
@@ -32,7 +32,7 @@ public class DialectDdlTest {
         if(!"\"NAME\" VARCHAR(80) NOT NULL".equals(d.columnDefinition(name())))throw new AssertionError("PostgreSQL column: "+d.columnDefinition(name()));
         if(!"CREATE UNIQUE INDEX \"IX_STORE_NAME\" ON \"dbo\".\"STORE\" USING BTREE (\"NAME\", \"ID\")".equals(d.createIndex(t,index())))throw new AssertionError("PostgreSQL index: "+d.createIndex(t,index()));
         if(!"DROP INDEX \"IX_STORE_NAME\"".equals(d.dropIndex(t,index().name)))throw new AssertionError("PostgreSQL drop index");
-        ColumnMetaData generated=new ColumnMetaData("CREATED_AT").dateTime().generation(ColumnGeneration.INSERT_TIMESTAMP);
+        ColumnMetaData generated=new ColumnMetaData("CREATED_AT").datetime().generation(ColumnGeneration.INSERT_TIMESTAMP);
         if(!"\"CREATED_AT\" TIMESTAMP DEFAULT CURRENT_TIMESTAMP".equals(d.columnDefinition(generated)))throw new AssertionError("PostgreSQL generated column: "+d.columnDefinition(generated));
     }
     private static void testH2() {
