@@ -1,6 +1,8 @@
 package cz.burios.qpx.darwin.db.dialect;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.util.Locale;
@@ -16,6 +18,7 @@ public class MSSQLDialect implements DBDialect {
     @Override public String name() { return "mssql"; }
     @Override public String catalog(Connection connection) throws SQLException { return connection.getCatalog(); }
     @Override public String schema(Connection connection) throws SQLException { return connection.getSchema(); }
+    @Override public void loadIndexOptions(Connection c,String catalog,String schema,String tableName,IndexMetaData index)throws SQLException{if(schema==null||schema.isBlank()||index==null||index.name==null)return;String sql="SELECT i.type_desc FROM sys.indexes i JOIN sys.tables t ON t.object_id=i.object_id JOIN sys.schemas s ON s.schema_id=t.schema_id WHERE s.name=? AND t.name=? AND i.name=?";try(PreparedStatement p=c.prepareStatement(sql)){p.setString(1,schema);p.setString(2,tableName);p.setString(3,index.name);try(ResultSet r=p.executeQuery()){if(r.next()){String method=r.getString(1);if(method!=null&&!method.isBlank())index.method(method.toUpperCase(Locale.ROOT));}}}}
     @Override public String tableName(TableMetaData table) { StringBuilder sql=new StringBuilder(); if(table.database!=null&&!table.database.isBlank())sql.append(quote(table.database)).append('.'); if(table.schema!=null&&!table.schema.isBlank())sql.append(quote(table.schema)).append('.'); return sql.append(quote(table.name)).toString(); }
     @Override public String quote(String name) { if(name==null||!name.matches("[A-Za-z_][A-Za-z0-9_$]*"))throw new IllegalArgumentException("Invalid SQL identifier: "+name); return "["+name+"]"; }
     @Override public ColumnType logicalType(ColumnMetaData c) { String n=c.jdbcTypeName!=null?c.jdbcTypeName:c.type; if(n!=null){String t=n.toUpperCase(Locale.ROOT); if(t.contains("CHAR")||t.contains("VARCHAR"))return ColumnType.STRING; if(t.contains("TEXT")||t.contains("NTEXT"))return ColumnType.TEXT; if(t.equals("BIT"))return ColumnType.BOOLEAN; if(t.equals("BIGINT"))return ColumnType.LONG; if(t.equals("INT")||t.equals("INTEGER")||t.equals("SMALLINT")||t.equals("TINYINT"))return ColumnType.INTEGER; if(t.contains("DECIMAL")||t.contains("NUMERIC")||t.equals("MONEY")||t.equals("SMALLMONEY"))return ColumnType.DECIMAL; if(t.contains("FLOAT")||t.equals("REAL"))return ColumnType.DOUBLE; if(t.equals("DATETIME")||t.equals("DATETIME2")||t.equals("SMALLDATETIME"))return ColumnType.DATETIME; if(t.equals("DATETIMEOFFSET"))return ColumnType.TIMESTAMP; if(t.equals("DATE"))return ColumnType.DATE; if(t.equals("TIME"))return ColumnType.TIME; if(t.contains("BINARY")||t.contains("IMAGE"))return ColumnType.BINARY;} return DBDialect.super.logicalType(c); }
