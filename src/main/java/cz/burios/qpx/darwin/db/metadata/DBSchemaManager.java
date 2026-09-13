@@ -20,7 +20,10 @@ public class DBSchemaManager {
     public void addColumn(Connection c,TableMetaData t,ColumnMetaData col)throws SQLException { require(t); require(col); execute(c,"ALTER TABLE "+dialect.tableName(t)+" ADD COLUMN "+dialect.columnDefinition(col)); }
     public void dropColumn(Connection c,TableMetaData t,String col)throws SQLException { require(t); execute(c,"ALTER TABLE "+dialect.tableName(t)+" DROP COLUMN "+dialect.columnName(col)); }
     public void dropTable(Connection c,TableMetaData t)throws SQLException { require(t); execute(c,"DROP TABLE "+dialect.tableName(t)); }
-    public void alterColumn(Connection c,TableMetaData t,ColumnMetaData col)throws SQLException { require(t); require(col); execute(c,dialect.alterColumn(t,col)); }
+    public void alterColumn(Connection c,TableMetaData t,ColumnMetaData col)throws SQLException {
+        require(t); require(col);
+        for (String sql : dialect.alterColumnStatements(t, col)) if (sql != null && !sql.isBlank()) execute(c, sql);
+    }
     public void alterTableParams(Connection c,TableMetaData t)throws SQLException { require(t); String sql=dialect.alterTableOptions(t); if(sql!=null&&!sql.isBlank())execute(c,sql); }
     public void createIndex(Connection c,TableMetaData t,IndexMetaData index)throws SQLException { require(t); execute(c,dialect.createIndex(t,index)); }
     public void dropIndex(Connection c,TableMetaData t,String name)throws SQLException { require(t); execute(c,dialect.dropIndex(t,name)); }
