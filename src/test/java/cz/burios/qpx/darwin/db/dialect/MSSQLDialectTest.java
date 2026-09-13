@@ -2,6 +2,7 @@ package cz.burios.qpx.darwin.db.dialect;
 
 import java.sql.Types;
 
+import cz.burios.qpx.darwin.db.metadata.ColumnGeneration;
 import cz.burios.qpx.darwin.db.metadata.ColumnMetaData;
 import cz.burios.qpx.darwin.db.metadata.ColumnType;
 import cz.burios.qpx.darwin.db.metadata.IndexMetaData;
@@ -18,11 +19,23 @@ public class MSSQLDialectTest {
 
         ColumnMetaData id = new ColumnMetaData("ID").longType().nullable(false).primaryKey(true).autoIncrement(true);
         String idSql = dialect.columnDefinition(id);
-        if (!"[ID] BIGINT IDENTITY(1,1) NOT NULL PRIMARY KEY".equals(idSql)) throw new AssertionError("Unexpected ID SQL: " + idSql);
+        if (!"[ID] BIGINT IDENTITY(1,1) NOT NULL".equals(idSql)) throw new AssertionError("Unexpected ID SQL: " + idSql);
 
         ColumnMetaData name = new ColumnMetaData("NAME").string(80).nullable(false);
         String nameSql = dialect.columnDefinition(name);
         if (!"[NAME] VARCHAR(80) NOT NULL".equals(nameSql)) throw new AssertionError("Unexpected NAME SQL: " + nameSql);
+
+        ColumnMetaData created = new ColumnMetaData("CREATED_AT").type(ColumnType.DATETIME).generation(ColumnGeneration.INSERT_TIMESTAMP);
+        if (!"[CREATED_AT] DATETIME2 DEFAULT CURRENT_TIMESTAMP".equals(dialect.columnDefinition(created))) throw new AssertionError("Unexpected INSERT timestamp SQL");
+
+        ColumnMetaData updated = new ColumnMetaData("UPDATED_AT").type(ColumnType.DATETIME).generation(ColumnGeneration.INSERT_UPDATE_TIMESTAMP);
+        boolean unsupported = false;
+        try {
+            dialect.columnGeneration(updated);
+        } catch (UnsupportedOperationException expected) {
+            unsupported = true;
+        }
+        if (!unsupported) throw new AssertionError("INSERT_UPDATE_TIMESTAMP should be rejected by MSSQL");
 
         ColumnMetaData active = new ColumnMetaData("ACTIVE");
         active.jdbcType = Types.BIT;
