@@ -24,6 +24,7 @@ public final class SchemaDiff {
             TableMetaData existing = actualTables.get(key(wanted.name));
             if (existing == null) { result.add(SchemaChange.createTable(wanted)); continue; }
             diffColumns(result, existing, wanted, includeDrops);
+            diffIndexes(result, existing, wanted, includeDrops);
             if (!sameParams(existing, wanted)) result.add(SchemaChange.alterTableParams(wanted));
         }
         if (includeDrops) for (TableMetaData existing : actual.tables.values())
@@ -42,6 +43,8 @@ public final class SchemaDiff {
             case ALTER_COLUMN -> manager.alterColumn(connection, change.table(), change.column());
             case DROP_COLUMN -> manager.dropColumn(connection, change.table(), change.columnName());
             case ALTER_TABLE_PARAMS -> manager.alterTableParams(connection, change.table());
+            case CREATE_INDEX -> manager.createIndex(connection, change.table(), change.index());
+            case DROP_INDEX -> manager.dropIndex(connection, change.table(), change.indexName());
             case DROP_TABLE -> manager.dropTable(connection, change.table());
         }
     }
@@ -55,6 +58,28 @@ public final class SchemaDiff {
         }
         if (includeDrops) for (ColumnMetaData existing : actual.columns)
             if (!desiredColumns.containsKey(key(existing.name))) result.add(SchemaChange.dropColumn(desired, existing.name));
+    }
+    private static void diffIndexes(List<SchemaChange> result, TableMetaData actual, TableMetaData desired, boolean includeDrops) {
+        Map<String, IndexMetaData> actualIndexes = indexIndexes(actual.indexes);
+        Map<String, IndexMetaData> desiredIndexes = indexIndexes(desired.indexes);
+        for (IndexMetaData wanted : desired.indexes) {
+            IndexMetaData existing = actualIndexes.get(key(wanted.name));
+            if (existing == null) result.add(SchemaChange.createIndex(desired, wanted));
+            else if (!sameIndex(existing, wanted)) {
+                result.add(SchemaChange.dropIndex(desired, existing.name));
+                result.add(SchemaChange.createIndex(desired, wanted));
+            }
+        }
+        if (includeDrops) for (IndexMetaData existing : actual.indexes)
+            if (!desiredIndexes.containsKey(key(existing.name))) result.add(SchemaChange.dropIndex(desired, existing.name));
+    }
+    private static boolean sameIndex(IndexMetaData actual, IndexMetaData desired) {
+        if (desired.unique != actual.unique) return false;
+        if (desired.type != null && !desired.type.isBlank() && !equalIgnoreCase(actual.type, desired.type)) return false;
+        if (desired.method != null && !desired.method.isBlank() && !equalIgnoreCase(actual.method, desired.method)) return false;
+        if (desired.columns.size() != actual.columns.size()) return false;
+        for (int i = 0; i < desired.columns.size(); i++) if (!equalIgnoreCase(actual.columns.get(i), desired.columns.get(i))) return false;
+        return true;
     }
     /** Compares properties explicitly represented by the desired metadata. */
     private static boolean sameColumn(ColumnMetaData actual, ColumnMetaData desired) {
@@ -95,6 +120,11 @@ public final class SchemaDiff {
     private static Map<String, ColumnMetaData> indexColumns(List<ColumnMetaData> source) {
         Map<String, ColumnMetaData> result = new LinkedHashMap<>();
         for (ColumnMetaData column : source) result.put(key(column.name), column);
+        return result;
+    }
+    private static Map<String, IndexMetaData> indexIndexes(List<IndexMetaData> source) {
+        Map<String, IndexMetaData> result = new LinkedHashMap<>();
+        for (IndexMetaData index : source) result.put(key(index.name), index);
         return result;
     }
     private static String key(String value) { return value == null ? "" : value.toLowerCase(Locale.ROOT); }
