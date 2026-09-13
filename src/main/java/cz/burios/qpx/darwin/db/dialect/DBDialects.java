@@ -13,6 +13,8 @@ public final class DBDialects {
         String normalized = product == null ? "" : product.toLowerCase();
         if (normalized.contains("mysql")) return new MySQLDialect();
         if (normalized.contains("postgresql")) return new PostgreSQLDialect();
+        if (normalized.contains("h2")) return new H2Dialect();
+        if (normalized.contains("sqlite")) return new SQLiteDialect();
         throw new IllegalArgumentException("No SQL dialect registered for database: " + product);
     }
 }
