@@ -35,8 +35,8 @@ public class DialectDdlTest {
         if (!"`depo_cz`.`STORE`".equals(d.tableName(t))) throw new AssertionError("MySQL table name: " + d.tableName(t));
         ColumnMetaData c = name().collation("utf8_czech_ci");
         if (!"`NAME` VARCHAR(80) NOT NULL COLLATE utf8_czech_ci".equals(d.columnDefinition(c))) throw new AssertionError("MySQL column: " + d.columnDefinition(c));
-        c.generation(ColumnGeneration.INSERT_UPDATE_TIMESTAMP);
-        if (!"`NAME` VARCHAR(80) NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COLLATE utf8_czech_ci".equals(d.columnDefinition(c))) throw new AssertionError("MySQL generated column: " + d.columnDefinition(c));
+        c = new ColumnMetaData("UPDATED_AT").dateTime().nullable(false).generation(ColumnGeneration.INSERT_UPDATE_TIMESTAMP);
+        if (!"`UPDATED_AT` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP".equals(d.columnDefinition(c))) throw new AssertionError("MySQL generated column: " + d.columnDefinition(c));
         if (!"CREATE UNIQUE INDEX `IX_STORE_NAME` ON `depo_cz`.`STORE` (`NAME`, `ID`) USING BTREE".equals(d.createIndex(t, index()))) throw new AssertionError("MySQL index: " + d.createIndex(t, index()));
         if (!"DROP INDEX `IX_STORE_NAME` ON `depo_cz`.`STORE`".equals(d.dropIndex(t, index().name))) throw new AssertionError("MySQL drop index");
     }
