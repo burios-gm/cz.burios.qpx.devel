@@ -26,6 +26,7 @@ public class DBSchemaManager {
         appendPrimaryKey(sql, table);
         sql.append(')').append(dialect.tableOptions(table));
         execute(connection, sql.toString());
+        for (IndexMetaData index : table.indexes) createIndex(connection, table, index);
     }
 
     public void addColumn(Connection connection, TableMetaData table, ColumnMetaData column) throws SQLException {
@@ -50,6 +51,17 @@ public class DBSchemaManager {
         require(table);
         String sql = dialect.alterTableOptions(table);
         if (sql != null && !sql.isBlank()) execute(connection, sql);
+    }
+    public void createIndex(Connection connection, TableMetaData table, IndexMetaData index) throws SQLException {
+        require(table);
+        if (index == null || index.name == null || index.name.isBlank()) throw new IllegalArgumentException("index is required");
+        if (index.columns.isEmpty()) throw new IllegalArgumentException("index must contain at least one column");
+        execute(connection, dialect.createIndex(table, index));
+    }
+    public void dropIndex(Connection connection, TableMetaData table, String indexName) throws SQLException {
+        require(table);
+        if (indexName == null || indexName.isBlank()) throw new IllegalArgumentException("index name is required");
+        execute(connection, dialect.dropIndex(table, indexName));
     }
 
     private void appendPrimaryKey(StringBuilder sql, TableMetaData table) {
