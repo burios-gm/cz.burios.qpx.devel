@@ -10,9 +10,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import cz.burios.qpx.darwin.db.dialect.DBDialect;
 
-/** Compares desired table metadata with runtime database metadata. */
+/** Compares desired table metadata with runtime database metadata and represents an immutable migration plan. */
 public final class SchemaDiff {
     private final List<SchemaChange> changes;
 
@@ -54,13 +57,22 @@ public final class SchemaDiff {
         List<String> sql = new ArrayList<>();
         for (SchemaChange change : changes) {
             sql.add(manager.sql(change));
-            if (change.type() == SchemaChange.Type.CREATE_TABLE) {
+            if (change.type() == SchemaChange.Type.CREATE_TABLE)
                 for (IndexMetaData index : change.table().indexes) sql.add(manager.sql(SchemaChange.createIndex(change.table(), index)));
-            }
         }
         return Collections.unmodifiableList(sql);
     }
 
+    /** Serializes this plan for logging, administration and transport. */
+    public String toJson() {
+        try {
+            return new ObjectMapper().writeValueAsString(changes);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Cannot serialize schema migration plan", e);
+        }
+    }
+
+    /** Applies the immutable plan in its already determined execution order. */
     public void apply(Connection connection, DBSchemaManager manager) throws SQLException {
         if (connection == null) throw new IllegalArgumentException("connection must not be null");
         if (manager == null) throw new IllegalArgumentException("manager must not be null");
@@ -95,7 +107,6 @@ public final class SchemaDiff {
             if (table == null || table.name == null || table.name.isBlank()) throw new IllegalArgumentException("desired table must have a name");
             String tableKey = key(table);
             if (seenTables.put(tableKey, table) != null) throw new IllegalArgumentException("duplicate desired table: " + tableKey);
-
             Map<String, ColumnMetaData> columns = new LinkedHashMap<>();
             for (ColumnMetaData column : table.columns) {
                 if (column == null || column.name == null || column.name.isBlank()) throw new IllegalArgumentException("desired column must have a name in table " + table.name);
@@ -148,7 +159,6 @@ public final class SchemaDiff {
         return true;
     }
 
-    /** Compares properties explicitly represented by the desired metadata. */
     private static boolean sameColumn(ColumnMetaData actual, ColumnMetaData desired) {
         if (desired.logicalType != null && desired.logicalType != actual.logicalType) return false;
         if (desired.type != null && !desired.type.isBlank() && !equalIgnoreCase(actual.type, desired.type)) return false;
@@ -181,33 +191,10 @@ public final class SchemaDiff {
         for (Map.Entry<String, Object> entry : params.entrySet()) if (entry.getKey().equalsIgnoreCase(name)) return entry.getValue();
         return null;
     }
-
-    private static Map<String, TableMetaData> indexTables(Map<String, TableMetaData> source) {
-        Map<String, TableMetaData> result = new LinkedHashMap<>();
-        for (TableMetaData table : source.values()) result.put(key(table), table);
-        return result;
-    }
-
-    private static Map<String, ColumnMetaData> indexColumns(List<ColumnMetaData> source) {
-        Map<String, ColumnMetaData> result = new LinkedHashMap<>();
-        for (ColumnMetaData column : source) result.put(key(column.name), column);
-        return result;
-    }
-
-    private static Map<String, IndexMetaData> indexIndexes(List<IndexMetaData> source) {
-        Map<String, IndexMetaData> result = new LinkedHashMap<>();
-        for (IndexMetaData index : source) result.put(key(index.name), index);
-        return result;
-    }
-
-    private static String key(TableMetaData table) {
-        StringBuilder key = new StringBuilder();
-        if (table.database != null && !table.database.isBlank()) key.append(table.database).append('.');
-        if (table.schema != null && !table.schema.isBlank()) key.append(table.schema).append('.');
-        key.append(table.name);
-        return key.toString().toLowerCase(Locale.ROOT);
-    }
-
+    private static Map<String, TableMetaData> indexTables(Map<String, TableMetaData> source) { Map<String, TableMetaData> result = new LinkedHashMap<>(); for (TableMetaData table : source.values()) result.put(key(table), table); return result; }
+    private static Map<String, ColumnMetaData> indexColumns(List<ColumnMetaData> source) { Map<String, ColumnMetaData> result = new LinkedHashMap<>(); for (ColumnMetaData column : source) result.put(key(column.name), column); return result; }
+    private static Map<String, IndexMetaData> indexIndexes(List<IndexMetaData> source) { Map<String, IndexMetaData> result = new LinkedHashMap<>(); for (IndexMetaData index : source) result.put(key(index.name), index); return result; }
+    private static String key(TableMetaData table) { StringBuilder key = new StringBuilder(); if (table.database != null && !table.database.isBlank()) key.append(table.database).append('.'); if (table.schema != null && !table.schema.isBlank()) key.append(table.schema).append('.'); key.append(table.name); return key.toString().toLowerCase(Locale.ROOT); }
     private static String key(String value) { return value == null ? "" : value.toLowerCase(Locale.ROOT); }
     private static boolean equal(String a, String b) { return a == null ? b == null : a.equals(b); }
     private static boolean equalIgnoreCase(String a, String b) { return a == null ? b == null : a.equalsIgnoreCase(b); }
