@@ -24,9 +24,42 @@ public class DBMetaData {
     public final Map<String, TableMetaData> tables = new LinkedHashMap<>();
     public DBMetaData() {}
     public DBMetaData(String databaseName) { this.catalog = databaseName; this.databaseName = databaseName; }
-    public TableMetaData table(String name) { return tables.get(name); }
-    public DBMetaData add(TableMetaData table) { tables.put(table.name, table); return this; }
-    public DBMetaData remove(String name) { tables.remove(name); return this; }
+
+    /** Returns a table by its exact metadata key or, for compatibility, by an unambiguous simple name. */
+    public TableMetaData table(String name) {
+        TableMetaData table = tables.get(name);
+        if (table != null) return table;
+        TableMetaData found = null;
+        for (TableMetaData candidate : tables.values()) if (candidate.name != null && candidate.name.equalsIgnoreCase(name)) {
+            if (found != null) return null;
+            found = candidate;
+        }
+        return found;
+    }
+
+    public DBMetaData add(TableMetaData table) {
+        if (table == null || table.name == null || table.name.isBlank()) throw new IllegalArgumentException("table is required");
+        tables.put(key(table), table);
+        return this;
+    }
+
+    public DBMetaData remove(String name) {
+        if (name == null) return this;
+        if (tables.remove(name) != null) return this;
+        String key = name.toLowerCase(Locale.ROOT);
+        String found = null;
+        for (Map.Entry<String, TableMetaData> entry : tables.entrySet()) if (key(entry.getValue()).equals(key)) { found = entry.getKey(); break; }
+        if (found != null) tables.remove(found);
+        return this;
+    }
+
+    private static String key(TableMetaData table) {
+        StringBuilder key = new StringBuilder();
+        if (table.database != null && !table.database.isBlank()) key.append(table.database).append('.');
+        if (table.schema != null && !table.schema.isBlank()) key.append(table.schema).append('.');
+        key.append(table.name);
+        return key.toString().toLowerCase(Locale.ROOT);
+    }
 
     public static DBMetaData load(Connection connection) throws SQLException {
         if (connection == null) throw new IllegalArgumentException("connection must not be null");
