@@ -5,10 +5,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 import cz.burios.qpx.darwin.db.dialect.DBDialect;
-import cz.burios.qpx.darwin.db.dialect.H2Dialect;
 import cz.burios.qpx.darwin.db.dialect.MySQLDialect;
-import cz.burios.qpx.darwin.db.dialect.PostgreSQLDialect;
-import cz.burios.qpx.darwin.db.dialect.SQLiteDialect;
 
 /** Runtime DDL facade. The dialect owns database-specific SQL details. */
 public class DBSchemaManager {
@@ -57,16 +54,16 @@ public class DBSchemaManager {
         if (index.columns.isEmpty()) throw new IllegalArgumentException("index must contain at least one column");
         StringBuilder sql = new StringBuilder("CREATE ");
         if (index.unique) sql.append("UNIQUE ");
-        sql.append("INDEX ").append(dialect.quote(index.name)).append(" ON ").append(dialect.tableName(table)).append(" (");
+        sql.append("INDEX ").append(dialect.quote(index.name)).append(" ON ").append(dialect.tableName(table));
+        if (index.method != null && !index.method.isBlank() && dialect instanceof cz.burios.qpx.darwin.db.dialect.PostgreSQLDialect)
+            sql.append(" USING ").append(index.method);
+        sql.append(" (");
         for (int i = 0; i < index.columns.size(); i++) {
             if (i > 0) sql.append(", ");
             sql.append(dialect.columnName(index.columns.get(i)));
         }
         sql.append(')');
-        if (index.method != null && !index.method.isBlank()) {
-            if (dialect instanceof MySQLDialect) sql.append(" USING ").append(index.method);
-            else if (dialect instanceof PostgreSQLDialect) sql.insert(0, "CREATE " + (index.unique ? "UNIQUE " : "") + "INDEX " + dialect.quote(index.name) + " ON " + dialect.tableName(table) + " USING " + index.method + " (").append(')');
-        }
+        if (index.method != null && !index.method.isBlank() && dialect instanceof MySQLDialect) sql.append(" USING ").append(index.method);
         execute(connection, sql.toString());
     }
     public void dropIndex(Connection connection, TableMetaData table, String indexName) throws SQLException {
@@ -76,7 +73,6 @@ public class DBSchemaManager {
         if (dialect instanceof MySQLDialect) sql += " ON " + dialect.tableName(table);
         execute(connection, sql);
     }
-
     private void appendPrimaryKey(StringBuilder sql, TableMetaData table) {
         boolean first = true;
         for (ColumnMetaData c : table.columns) {
