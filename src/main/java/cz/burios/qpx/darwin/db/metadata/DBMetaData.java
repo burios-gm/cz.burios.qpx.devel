@@ -4,8 +4,11 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -98,6 +101,13 @@ public class DBMetaData {
         }
         table.columns.clear(); table.columns.addAll(columns.values());
     }
+
+    /**
+     * Loads secondary indexes from JDBC DatabaseMetaData.getIndexInfo().
+     * JDBC exposes index uniqueness, JDBC index type, index/column names and column order.
+     * It does not expose a portable index method such as BTREE/HASH, so {@link IndexMetaData#method}
+     * is deliberately left untouched here and is available for dialect-specific metadata loaders.
+     */
     private static void loadIndexes(DatabaseMetaData db, String catalog, String schema, String tableName, TableMetaData table) throws SQLException {
         Set<String> primaryIndexNames = new HashSet<>();
         try (ResultSet rs = db.getPrimaryKeys(catalog, schema, tableName)) {
@@ -106,19 +116,39 @@ public class DBMetaData {
                 if (name != null && !name.isBlank()) primaryIndexNames.add(name.toLowerCase(Locale.ROOT));
             }
         }
-        Map<String, IndexMetaData> indexes = new LinkedHashMap<>();
+
+        Map<String, IndexRows> indexes = new LinkedHashMap<>();
         try (ResultSet rs = db.getIndexInfo(catalog, schema, tableName, false, false)) {
             while (rs.next()) {
-                String name = rs.getString("INDEX_NAME"), column = rs.getString("COLUMN_NAME");
-                if (name == null || column == null || primaryIndexNames.contains(name.toLowerCase(Locale.ROOT))) continue;
-                IndexMetaData index = indexes.get(name);
+                short jdbcType = rs.getShort("TYPE");
+                String name = rs.getString("INDEX_NAME");
+                String column = rs.getString("COLUMN_NAME");
+
+                // JDBC may return a statistics row (TYPE=tableIndexStatistic) with no index/column name.
+                if (jdbcType == DatabaseMetaData.tableIndexStatistic || name == null || name.isBlank() || column == null || column.isBlank()) continue;
+                if (primaryIndexNames.contains(name.toLowerCase(Locale.ROOT))) continue;
+
+                IndexRows index = indexes.get(name.toLowerCase(Locale.ROOT));
                 if (index == null) {
-                    index = new IndexMetaData(name).unique(!rs.getBoolean("NON_UNIQUE")).type(rs.getString("TYPE"));
-                    indexes.put(name, index);
+                    index = new IndexRows(new IndexMetaData(name).unique(!rs.getBoolean("NON_UNIQUE")).type(String.valueOf(jdbcType)));
+                    indexes.put(name.toLowerCase(Locale.ROOT), index);
                 }
-                index.column(column);
+                index.rows.add(new IndexColumn(rs.getInt("ORDINAL_POSITION"), column));
             }
         }
-        table.indexes.clear(); table.indexes.addAll(indexes.values());
+
+        table.indexes.clear();
+        for (IndexRows rows : indexes.values()) {
+            rows.rows.sort(Comparator.comparingInt(IndexColumn::position));
+            for (IndexColumn column : rows.rows) rows.index.column(column.name());
+            table.indexes.add(rows.index);
+        }
+    }
+
+    private record IndexColumn(int position, String name) {}
+    private static final class IndexRows {
+        final IndexMetaData index;
+        final List<IndexColumn> rows = new ArrayList<>();
+        IndexRows(IndexMetaData index) { this.index = index; }
     }
 }
