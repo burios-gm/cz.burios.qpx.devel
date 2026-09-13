@@ -4,16 +4,26 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import cz.burios.qpx.darwin.db.dialect.DBDialect;
+
 /** Compares desired table metadata with runtime database metadata. */
 public final class SchemaDiff {
     private final List<SchemaChange> changes;
-    private SchemaDiff(List<SchemaChange> changes) { this.changes = List.copyOf(changes); }
+
+    private SchemaDiff(List<SchemaChange> changes) {
+        List<SchemaChange> ordered = new ArrayList<>(changes);
+        ordered.sort(Comparator.comparingInt(change -> phase(change.type())));
+        this.changes = List.copyOf(ordered);
+    }
+
     public static SchemaDiff compare(DBMetaData actual, DBMetaData desired) { return compare(actual, desired, false); }
+
     public static SchemaDiff compare(DBMetaData actual, DBMetaData desired, boolean includeDrops) {
         if (actual == null) throw new IllegalArgumentException("actual metadata must not be null");
         if (desired == null) throw new IllegalArgumentException("desired metadata must not be null");
@@ -31,9 +41,20 @@ public final class SchemaDiff {
             if (!desiredTables.containsKey(key(existing))) result.add(SchemaChange.dropTable(existing));
         return new SchemaDiff(result);
     }
+
     public List<SchemaChange> changes() { return Collections.unmodifiableList(changes); }
     public boolean isEmpty() { return changes.isEmpty(); }
     public int size() { return changes.size(); }
+
+    /** Renders the executable SQL represented by this migration plan. */
+    public List<String> toSQL(DBDialect dialect) {
+        if (dialect == null) throw new IllegalArgumentException("dialect must not be null");
+        DBSchemaManager manager = new DBSchemaManager(dialect);
+        List<String> sql = new ArrayList<>();
+        for (SchemaChange change : changes) sql.add(manager.sql(change));
+        return Collections.unmodifiableList(sql);
+    }
+
     public void apply(Connection connection, DBSchemaManager manager) throws SQLException {
         if (connection == null) throw new IllegalArgumentException("connection must not be null");
         if (manager == null) throw new IllegalArgumentException("manager must not be null");
@@ -48,6 +69,20 @@ public final class SchemaDiff {
             case DROP_TABLE -> manager.dropTable(connection, change.table());
         }
     }
+
+    private static int phase(SchemaChange.Type type) {
+        return switch (type) {
+            case CREATE_TABLE -> 10;
+            case DROP_INDEX -> 20;
+            case DROP_COLUMN -> 30;
+            case ALTER_COLUMN -> 40;
+            case ADD_COLUMN -> 50;
+            case ALTER_TABLE_PARAMS -> 60;
+            case CREATE_INDEX -> 70;
+            case DROP_TABLE -> 80;
+        };
+    }
+
     private static void diffColumns(List<SchemaChange> result, TableMetaData actual, TableMetaData desired, boolean includeDrops) {
         Map<String, ColumnMetaData> actualColumns = indexColumns(actual.columns);
         Map<String, ColumnMetaData> desiredColumns = indexColumns(desired.columns);
@@ -59,6 +94,7 @@ public final class SchemaDiff {
         if (includeDrops) for (ColumnMetaData existing : actual.columns)
             if (!desiredColumns.containsKey(key(existing.name))) result.add(SchemaChange.dropColumn(desired, existing.name));
     }
+
     private static void diffIndexes(List<SchemaChange> result, TableMetaData actual, TableMetaData desired, boolean includeDrops) {
         Map<String, IndexMetaData> actualIndexes = indexIndexes(actual.indexes);
         Map<String, IndexMetaData> desiredIndexes = indexIndexes(desired.indexes);
@@ -73,6 +109,7 @@ public final class SchemaDiff {
         if (includeDrops) for (IndexMetaData existing : actual.indexes)
             if (!desiredIndexes.containsKey(key(existing.name))) result.add(SchemaChange.dropIndex(desired, existing.name));
     }
+
     private static boolean sameIndex(IndexMetaData actual, IndexMetaData desired) {
         if (desired.unique != actual.unique) return false;
         if (desired.type != null && !desired.type.isBlank() && !equalIgnoreCase(actual.type, desired.type)) return false;
@@ -81,6 +118,7 @@ public final class SchemaDiff {
         for (int i = 0; i < desired.columns.size(); i++) if (!equalIgnoreCase(actual.columns.get(i), desired.columns.get(i))) return false;
         return true;
     }
+
     /** Compares properties explicitly represented by the desired metadata. */
     private static boolean sameColumn(ColumnMetaData actual, ColumnMetaData desired) {
         if (desired.logicalType != null && desired.logicalType != actual.logicalType) return false;
@@ -99,6 +137,7 @@ public final class SchemaDiff {
         ColumnGeneration actualGeneration = actual.generation == null ? ColumnGeneration.NONE : actual.generation;
         return desiredGeneration == actualGeneration;
     }
+
     private static boolean sameParams(TableMetaData actual, TableMetaData desired) {
         if (desired.params.isEmpty()) return true;
         for (Map.Entry<String, Object> wanted : desired.params.entrySet()) {
@@ -108,25 +147,30 @@ public final class SchemaDiff {
         }
         return true;
     }
+
     private static Object findParam(Map<String, Object> params, String name) {
         for (Map.Entry<String, Object> entry : params.entrySet()) if (entry.getKey().equalsIgnoreCase(name)) return entry.getValue();
         return null;
     }
+
     private static Map<String, TableMetaData> indexTables(Map<String, TableMetaData> source) {
         Map<String, TableMetaData> result = new LinkedHashMap<>();
         for (TableMetaData table : source.values()) result.put(key(table), table);
         return result;
     }
+
     private static Map<String, ColumnMetaData> indexColumns(List<ColumnMetaData> source) {
         Map<String, ColumnMetaData> result = new LinkedHashMap<>();
         for (ColumnMetaData column : source) result.put(key(column.name), column);
         return result;
     }
+
     private static Map<String, IndexMetaData> indexIndexes(List<IndexMetaData> source) {
         Map<String, IndexMetaData> result = new LinkedHashMap<>();
         for (IndexMetaData index : source) result.put(key(index.name), index);
         return result;
     }
+
     private static String key(TableMetaData table) {
         StringBuilder key = new StringBuilder();
         if (table.database != null && !table.database.isBlank()) key.append(table.database).append('.');
@@ -134,6 +178,7 @@ public final class SchemaDiff {
         key.append(table.name);
         return key.toString().toLowerCase(Locale.ROOT);
     }
+
     private static String key(String value) { return value == null ? "" : value.toLowerCase(Locale.ROOT); }
     private static boolean equal(String a, String b) { return a == null ? b == null : a.equals(b); }
     private static boolean equalIgnoreCase(String a, String b) { return a == null ? b == null : a.equalsIgnoreCase(b); }
