@@ -21,14 +21,14 @@ public final class SchemaDiff {
         Map<String, TableMetaData> actualTables = indexTables(actual.tables);
         Map<String, TableMetaData> desiredTables = indexTables(desired.tables);
         for (TableMetaData wanted : desired.tables.values()) {
-            TableMetaData existing = actualTables.get(key(wanted.name));
+            TableMetaData existing = actualTables.get(key(wanted));
             if (existing == null) { result.add(SchemaChange.createTable(wanted)); continue; }
             diffColumns(result, existing, wanted, includeDrops);
             diffIndexes(result, existing, wanted, includeDrops);
             if (!sameParams(existing, wanted)) result.add(SchemaChange.alterTableParams(wanted));
         }
         if (includeDrops) for (TableMetaData existing : actual.tables.values())
-            if (!desiredTables.containsKey(key(existing.name))) result.add(SchemaChange.dropTable(existing));
+            if (!desiredTables.containsKey(key(existing))) result.add(SchemaChange.dropTable(existing));
         return new SchemaDiff(result);
     }
     public List<SchemaChange> changes() { return Collections.unmodifiableList(changes); }
@@ -114,7 +114,7 @@ public final class SchemaDiff {
     }
     private static Map<String, TableMetaData> indexTables(Map<String, TableMetaData> source) {
         Map<String, TableMetaData> result = new LinkedHashMap<>();
-        for (TableMetaData table : source.values()) result.put(key(table.name), table);
+        for (TableMetaData table : source.values()) result.put(key(table), table);
         return result;
     }
     private static Map<String, ColumnMetaData> indexColumns(List<ColumnMetaData> source) {
@@ -126,6 +126,13 @@ public final class SchemaDiff {
         Map<String, IndexMetaData> result = new LinkedHashMap<>();
         for (IndexMetaData index : source) result.put(key(index.name), index);
         return result;
+    }
+    private static String key(TableMetaData table) {
+        StringBuilder key = new StringBuilder();
+        if (table.database != null && !table.database.isBlank()) key.append(table.database).append('.');
+        if (table.schema != null && !table.schema.isBlank()) key.append(table.schema).append('.');
+        key.append(table.name);
+        return key.toString().toLowerCase(Locale.ROOT);
     }
     private static String key(String value) { return value == null ? "" : value.toLowerCase(Locale.ROOT); }
     private static boolean equal(String a, String b) { return a == null ? b == null : a.equals(b); }
