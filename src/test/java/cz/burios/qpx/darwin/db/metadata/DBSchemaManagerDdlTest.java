@@ -15,25 +15,27 @@ import cz.burios.qpx.darwin.db.dialect.PostgreSQLDialect;
 /** Integration-level DDL test: verifies DBSchemaManager composes dialect SQL correctly. */
 public class DBSchemaManagerDdlTest {
     public static void main(String[] args) throws Exception {
-        test("mysql", new MySQLDialect(),
+        test("mysql", new MySQLDialect(), true,
                 "CREATE TABLE `depo_cz`.`STORE` (`ID` BIGINT NOT NULL, `CODE` VARCHAR(20) NOT NULL, PRIMARY KEY (`ID`, `CODE`)) ENGINE=MyISAM COLLATE=utf8_czech_ci",
                 "CREATE INDEX `IX_STORE_CODE` ON `depo_cz`.`STORE` (`CODE`) USING BTREE");
-        test("postgresql", new PostgreSQLDialect(),
+        test("postgresql", new PostgreSQLDialect(), false,
                 "CREATE TABLE \"dbo\".\"STORE\" (\"ID\" BIGINT NOT NULL, \"CODE\" VARCHAR(20) NOT NULL, PRIMARY KEY (\"ID\", \"CODE\"))",
                 "CREATE INDEX \"IX_STORE_CODE\" ON \"dbo\".\"STORE\" (\"CODE\")");
-        test("h2", new H2Dialect(),
+        test("h2", new H2Dialect(), false,
                 "CREATE TABLE \"dbo\".\"STORE\" (\"ID\" BIGINT NOT NULL, \"CODE\" VARCHAR(20) NOT NULL, PRIMARY KEY (\"ID\", \"CODE\"))",
                 "CREATE INDEX \"IX_STORE_CODE\" ON \"dbo\".\"STORE\" (\"CODE\")");
-        test("mssql", new MSSQLDialect(),
+        test("mssql", new MSSQLDialect(), false,
                 "CREATE TABLE [depo_cz].[dbo].[STORE] ([ID] BIGINT NOT NULL, [CODE] VARCHAR(20) NOT NULL, PRIMARY KEY ([ID], [CODE]))",
                 "CREATE INDEX [IX_STORE_CODE] ON [depo_cz].[dbo].[STORE] ([CODE])");
         System.out.println("DBSchemaManagerDdlTest: OK");
     }
 
-    private static void test(String name, DBDialect dialect, String expectedCreate, String expectedIndex) throws Exception {
+    private static void test(String name, DBDialect dialect, boolean mysqlOptions, String expectedCreate, String expectedIndex) throws Exception {
         TableMetaData table = new TableMetaData("STORE").database("depo_cz").schema("dbo");
-        table.param("ENGINE", "MyISAM");
-        table.param("COLLATE", "utf8_czech_ci");
+        if (mysqlOptions) {
+            table.param("ENGINE", "MyISAM");
+            table.param("COLLATE", "utf8_czech_ci");
+        }
         table.addColumn(new ColumnMetaData("ID").longType().nullable(false).primaryKey(true));
         table.addColumn(new ColumnMetaData("CODE").string(20).nullable(false).primaryKey(true));
         table.addIndex(new IndexMetaData("IX_STORE_CODE").column("CODE"));
@@ -42,12 +44,6 @@ public class DBSchemaManagerDdlTest {
         Connection connection = connection(sql);
         new DBSchemaManager(dialect).createTable(connection, table);
 
-        if (dialect instanceof MySQLDialect) {
-            // MySQL is the only dialect in this test where table options are asserted.
-        } else {
-            // Other dialects intentionally receive the same metadata to ensure unsupported
-            // options do not leak into their generic table SQL.
-        }
         if (sql.size() != 2) throw new AssertionError(name + " statement count: " + sql.size());
         if (!expectedCreate.equals(sql.get(0))) throw new AssertionError(name + " CREATE: " + sql.get(0));
         if (!expectedIndex.equals(sql.get(1))) throw new AssertionError(name + " INDEX: " + sql.get(1));
