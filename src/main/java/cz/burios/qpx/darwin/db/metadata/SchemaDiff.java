@@ -27,6 +27,7 @@ public final class SchemaDiff {
     public static SchemaDiff compare(DBMetaData actual, DBMetaData desired, boolean includeDrops) {
         if (actual == null) throw new IllegalArgumentException("actual metadata must not be null");
         if (desired == null) throw new IllegalArgumentException("desired metadata must not be null");
+        validateDesired(desired);
         List<SchemaChange> result = new ArrayList<>();
         Map<String, TableMetaData> actualTables = indexTables(actual.tables);
         Map<String, TableMetaData> desiredTables = indexTables(desired.tables);
@@ -51,7 +52,12 @@ public final class SchemaDiff {
         if (dialect == null) throw new IllegalArgumentException("dialect must not be null");
         DBSchemaManager manager = new DBSchemaManager(dialect);
         List<String> sql = new ArrayList<>();
-        for (SchemaChange change : changes) sql.add(manager.sql(change));
+        for (SchemaChange change : changes) {
+            sql.add(manager.sql(change));
+            if (change.type() == SchemaChange.Type.CREATE_TABLE) {
+                for (IndexMetaData index : change.table().indexes) sql.add(manager.sql(SchemaChange.createIndex(change.table(), index)));
+            }
+        }
         return Collections.unmodifiableList(sql);
     }
 
@@ -81,6 +87,29 @@ public final class SchemaDiff {
             case CREATE_INDEX -> 70;
             case DROP_TABLE -> 80;
         };
+    }
+
+    private static void validateDesired(DBMetaData desired) {
+        Map<String, TableMetaData> seenTables = new LinkedHashMap<>();
+        for (TableMetaData table : desired.tables.values()) {
+            if (table == null || table.name == null || table.name.isBlank()) throw new IllegalArgumentException("desired table must have a name");
+            String tableKey = key(table);
+            if (seenTables.put(tableKey, table) != null) throw new IllegalArgumentException("duplicate desired table: " + tableKey);
+
+            Map<String, ColumnMetaData> columns = new LinkedHashMap<>();
+            for (ColumnMetaData column : table.columns) {
+                if (column == null || column.name == null || column.name.isBlank()) throw new IllegalArgumentException("desired column must have a name in table " + table.name);
+                if (columns.put(key(column.name), column) != null) throw new IllegalArgumentException("duplicate desired column " + table.name + "." + column.name);
+            }
+            Map<String, IndexMetaData> indexes = new LinkedHashMap<>();
+            for (IndexMetaData index : table.indexes) {
+                if (index == null || index.name == null || index.name.isBlank()) throw new IllegalArgumentException("desired index must have a name in table " + table.name);
+                if (indexes.put(key(index.name), index) != null) throw new IllegalArgumentException("duplicate desired index " + table.name + "." + index.name);
+                if (index.columns.isEmpty()) throw new IllegalArgumentException("desired index has no columns: " + table.name + "." + index.name);
+                for (String column : index.columns) if (!columns.containsKey(key(column)))
+                    throw new IllegalArgumentException("index " + table.name + "." + index.name + " references missing column " + column);
+            }
+        }
     }
 
     private static void diffColumns(List<SchemaChange> result, TableMetaData actual, TableMetaData desired, boolean includeDrops) {
