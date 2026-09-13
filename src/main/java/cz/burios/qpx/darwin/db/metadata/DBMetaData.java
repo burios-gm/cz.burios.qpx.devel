@@ -25,9 +25,10 @@ public class DBMetaData {
     public DBMetaData() {}
     public DBMetaData(String databaseName) { this.catalog = databaseName; this.databaseName = databaseName; }
 
-    /** Returns a table by its exact metadata key or, for compatibility, by an unambiguous simple name. */
+    /** Returns a table by its metadata key or, for compatibility, by an unambiguous simple name. */
     public TableMetaData table(String name) {
-        TableMetaData table = tables.get(name);
+        if (name == null) return null;
+        TableMetaData table = tables.get(name.toLowerCase(Locale.ROOT));
         if (table != null) return table;
         TableMetaData found = null;
         for (TableMetaData candidate : tables.values()) if (candidate.name != null && candidate.name.equalsIgnoreCase(name)) {
@@ -45,10 +46,10 @@ public class DBMetaData {
 
     public DBMetaData remove(String name) {
         if (name == null) return this;
-        if (tables.remove(name) != null) return this;
-        String key = name.toLowerCase(Locale.ROOT);
+        String normalized = name.toLowerCase(Locale.ROOT);
+        if (tables.remove(normalized) != null) return this;
         String found = null;
-        for (Map.Entry<String, TableMetaData> entry : tables.entrySet()) if (key(entry.getValue()).equals(key)) { found = entry.getKey(); break; }
+        for (Map.Entry<String, TableMetaData> entry : tables.entrySet()) if (key(entry.getValue()).equals(normalized)) { found = entry.getKey(); break; }
         if (found != null) tables.remove(found);
         return this;
     }
