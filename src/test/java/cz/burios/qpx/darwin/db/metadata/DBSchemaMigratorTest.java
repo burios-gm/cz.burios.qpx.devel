@@ -5,6 +5,7 @@ import java.sql.DriverManager;
 import java.util.List;
 
 import cz.burios.qpx.darwin.db.dialect.H2Dialect;
+import cz.burios.qpx.darwin.db.dialect.MySQLDialect;
 
 /** Executable integration test for the schema migration facade; no JUnit required. */
 public class DBSchemaMigratorTest {
@@ -60,6 +61,7 @@ public class DBSchemaMigratorTest {
             expectTransactionalRequiresAutoCommit(migrator);
             expectRollback(migrator);
             expectRecordedMigrationHistory();
+            expectNonTransactionalDdlRejected();
         }
         System.out.println("DBSchemaMigratorTest: OK");
     }
@@ -117,7 +119,7 @@ public class DBSchemaMigratorTest {
             try {
                 migrator.migrateRecorded(connection, desiredSchema(), "2026-09-14-store-v1");
                 throw new AssertionError("Duplicate migration ID should be rejected");
-            } catch (IllegalStateException expected) { }
+            } catch (SchemaMigrationException expected) { }
 
             DBMetaData broken = new DBMetaData()
                     .add(new TableMetaData("GOOD").addColumn(new ColumnMetaData("ID").type("BIGINT")))
@@ -131,6 +133,18 @@ public class DBSchemaMigratorTest {
                     throw new AssertionError("Expected FAILED history entry: " + failed);
                 if (DBMetaData.load(connection).table("GOOD") != null)
                     throw new AssertionError("Failed recorded migration should roll back GOOD");
+            }
+        }
+    }
+
+    private static void expectNonTransactionalDdlRejected() throws Exception {
+        try (Connection connection = DriverManager.getConnection("jdbc:h2:mem:schema_migrator_mysql_capability;DB_CLOSE_DELAY=-1")) {
+            DBSchemaMigrator migrator = new DBSchemaMigrator(new MySQLDialect());
+            try {
+                migrator.migrateTransactional(connection, desiredSchema());
+                throw new AssertionError("MySQL transactional DDL should be rejected");
+            } catch (SchemaMigrationException expected) {
+                if (!expected.getMessage().contains("mysql")) throw expected;
             }
         }
     }
