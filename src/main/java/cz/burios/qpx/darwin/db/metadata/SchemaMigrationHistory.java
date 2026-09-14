@@ -5,8 +5,6 @@ import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Timestamp;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -18,9 +16,9 @@ public final class SchemaMigrationHistory {
     public enum Status { RUNNING, APPLIED, FAILED }
 
     public record Entry(String migrationId, String planHash, Status status,
-            Instant createdAt, Instant completedAt, String errorMessage) { }
+            java.time.Instant createdAt, java.time.Instant completedAt, String errorMessage) { }
 
-    /** Creates the history table when it is not present. */
+    /** Creates the history table when it is not present. Epoch milliseconds keep the DDL portable. */
     public void ensureTable(Connection connection) throws SQLException {
         requireConnection(connection);
         DatabaseMetaData metadata = connection.getMetaData();
@@ -40,8 +38,8 @@ public final class SchemaMigrationHistory {
                 + "MIGRATION_ID VARCHAR(128) PRIMARY KEY, "
                 + "PLAN_HASH VARCHAR(64) NOT NULL, "
                 + "STATUS VARCHAR(16) NOT NULL, "
-                + "CREATED_AT TIMESTAMP NOT NULL, "
-                + "COMPLETED_AT TIMESTAMP NULL, "
+                + "CREATED_AT BIGINT NOT NULL, "
+                + "COMPLETED_AT BIGINT NULL, "
                 + "ERROR_MESSAGE VARCHAR(4000) NULL)";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.executeUpdate();
@@ -52,33 +50,33 @@ public final class SchemaMigrationHistory {
     public Entry start(Connection connection, String migrationId, String planHash) throws SQLException {
         validateId(migrationId);
         validateHash(planHash);
-        Instant now = Instant.now();
+        java.time.Instant now = java.time.Instant.now();
         String sql = "INSERT INTO " + TABLE_NAME
                 + " (MIGRATION_ID, PLAN_HASH, STATUS, CREATED_AT) VALUES (?, ?, ?, ?)";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, migrationId);
             statement.setString(2, planHash);
             statement.setString(3, Status.RUNNING.name());
-            statement.setTimestamp(4, Timestamp.from(now));
+            statement.setLong(4, now.toEpochMilli());
             statement.executeUpdate();
         }
         return new Entry(migrationId, planHash, Status.RUNNING, now, null, null);
     }
 
     public void markApplied(Connection connection, String migrationId) throws SQLException {
-        markApplied(connection, migrationId, Instant.now());
+        markApplied(connection, migrationId, java.time.Instant.now());
     }
 
-    public void markApplied(Connection connection, String migrationId, Instant completedAt) throws SQLException {
+    public void markApplied(Connection connection, String migrationId, java.time.Instant completedAt) throws SQLException {
         validateId(migrationId);
         updateStatus(connection, migrationId, Status.APPLIED, completedAt, null);
     }
 
     public void markFailed(Connection connection, String migrationId, String errorMessage) throws SQLException {
-        markFailed(connection, migrationId, Instant.now(), errorMessage);
+        markFailed(connection, migrationId, java.time.Instant.now(), errorMessage);
     }
 
-    public void markFailed(Connection connection, String migrationId, Instant completedAt, String errorMessage) throws SQLException {
+    public void markFailed(Connection connection, String migrationId, java.time.Instant completedAt, String errorMessage) throws SQLException {
         validateId(migrationId);
         updateStatus(connection, migrationId, Status.FAILED, completedAt, truncate(errorMessage));
     }
@@ -109,13 +107,14 @@ public final class SchemaMigrationHistory {
     }
 
     private static void updateStatus(Connection connection, String migrationId, Status status,
-            Instant completedAt, String errorMessage) throws SQLException {
+            java.time.Instant completedAt, String errorMessage) throws SQLException {
         requireConnection(connection);
         String sql = "UPDATE " + TABLE_NAME
                 + " SET STATUS = ?, COMPLETED_AT = ?, ERROR_MESSAGE = ? WHERE MIGRATION_ID = ?";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, status.name());
-            statement.setTimestamp(2, Timestamp.from(completedAt));
+            if (completedAt == null) statement.setNull(2, java.sql.Types.BIGINT);
+            else statement.setLong(2, completedAt.toEpochMilli());
             if (errorMessage == null) statement.setNull(3, java.sql.Types.VARCHAR);
             else statement.setString(3, errorMessage);
             statement.setString(4, migrationId);
@@ -125,13 +124,13 @@ public final class SchemaMigrationHistory {
     }
 
     private static Entry read(ResultSet rs) throws SQLException {
-        Timestamp created = rs.getTimestamp("CREATED_AT");
-        Timestamp completed = rs.getTimestamp("COMPLETED_AT");
+        long created = rs.getLong("CREATED_AT");
+        java.time.Instant completed = null;
+        long completedValue = rs.getLong("COMPLETED_AT");
+        if (!rs.wasNull()) completed = java.time.Instant.ofEpochMilli(completedValue);
         return new Entry(rs.getString("MIGRATION_ID"), rs.getString("PLAN_HASH"),
                 Status.valueOf(rs.getString("STATUS")),
-                created == null ? null : created.toInstant(),
-                completed == null ? null : completed.toInstant(),
-                rs.getString("ERROR_MESSAGE"));
+                java.time.Instant.ofEpochMilli(created), completed, rs.getString("ERROR_MESSAGE"));
     }
 
     private static String truncate(String message) {
