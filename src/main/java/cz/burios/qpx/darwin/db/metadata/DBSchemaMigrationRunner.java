@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 import cz.burios.qpx.darwin.db.dialect.DBDialect;
@@ -22,7 +23,7 @@ public final class DBSchemaMigrationRunner {
         List<DBSchemaMigration> copy = new ArrayList<>(migrations); Set<String> ids = new HashSet<>();
         for (DBSchemaMigration migration : copy) {
             if (migration == null) throw new IllegalArgumentException("migration must not be null");
-            if (!ids.add(migration.id().toLowerCase(java.util.Locale.ROOT))) throw new IllegalArgumentException("duplicate migration ID: " + migration.id());
+            if (!ids.add(normalizeId(migration.id()))) throw new IllegalArgumentException("duplicate migration ID: " + migration.id());
         }
         this.migrator = migrator; this.migrations = Collections.unmodifiableList(copy);
     }
@@ -69,6 +70,7 @@ public final class DBSchemaMigrationRunner {
         if (approval == null) throw new IllegalArgumentException("approval must not be null");
         DBSchemaMigration migration = findMigration(migrations, approval.migrationId());
         if (migration == null) throw new SchemaMigrationException("Migration approval does not belong to this runner: " + approval.migrationId());
+        if (!approval.description().equals(migration.description())) throw new SchemaMigrationException("Migration approval description does not match declared migration: " + migration.id());
         if (approval.includeDrops() != migration.includeDrops()) throw new SchemaMigrationException("Migration approval includeDrops does not match declared migration: " + migration.id());
         if (!approval.planHash().equalsIgnoreCase(approval.diff().planHash())) throw new SchemaMigrationException("Migration approval hash does not match its diff: " + migration.id());
         validate(connection);
@@ -119,7 +121,7 @@ public final class DBSchemaMigrationRunner {
         for (DBSchemaMigration migration : migrations) {
             SchemaMigrationHistory.Entry entry = findEntry(entries, migration.id());
             if (entry == null) { previousPending = true; continue; }
-            boolean allowedFailed = retryId != null && migration.id().equals(retryId) && entry.status() == SchemaMigrationHistory.Status.FAILED;
+            boolean allowedFailed = retryId != null && migration.id().equalsIgnoreCase(retryId) && entry.status() == SchemaMigrationHistory.Status.FAILED;
             if (entry.status() == SchemaMigrationHistory.Status.RUNNING) throw new SchemaMigrationException("Migration is still RUNNING: " + migration.id());
             if (entry.status() == SchemaMigrationHistory.Status.FAILED && !allowedFailed) throw new SchemaMigrationException("Migration has FAILED: " + migration.id() + (entry.errorMessage() == null ? "" : " - " + entry.errorMessage()));
             if (previousPending && entry.status() == SchemaMigrationHistory.Status.APPLIED) throw new SchemaMigrationException("Migration history has a gap before: " + migration.id());
@@ -129,7 +131,8 @@ public final class DBSchemaMigrationRunner {
             throw new SchemaMigrationException("Migration history contains undeclared migration: " + entry.migrationId());
     }
 
-    private static SchemaMigrationHistory.Entry findEntry(List<SchemaMigrationHistory.Entry> entries, String id) { for (SchemaMigrationHistory.Entry entry : entries) if (entry.migrationId().equals(id)) return entry; return null; }
-    private static DBSchemaMigration findMigration(List<DBSchemaMigration> migrations, String id) { for (DBSchemaMigration migration : migrations) if (migration.id().equals(id)) return migration; return null; }
+    private static SchemaMigrationHistory.Entry findEntry(List<SchemaMigrationHistory.Entry> entries, String id) { for (SchemaMigrationHistory.Entry entry : entries) if (entry.migrationId().equalsIgnoreCase(id)) return entry; return null; }
+    private static DBSchemaMigration findMigration(List<DBSchemaMigration> migrations, String id) { if (id == null) return null; for (DBSchemaMigration migration : migrations) if (migration.id().equalsIgnoreCase(id)) return migration; return null; }
+    private static String normalizeId(String id) { return id.toLowerCase(Locale.ROOT); }
     private static void requireConnection(Connection connection) { if (connection == null) throw new IllegalArgumentException("connection must not be null"); }
 }
