@@ -41,6 +41,21 @@ public final class DBSchemaMigrationRunner {
         return Collections.unmodifiableList(result);
     }
 
+    /** Plans all pending migrations without changing the database or migration history. */
+    public List<DBSchemaMigrationPlan> planPending(Connection connection) throws SQLException {
+        requireConnection(connection);
+        validate(connection);
+        List<DBSchemaMigrationPlan> result = new ArrayList<>();
+        List<SchemaMigrationHistory.Entry> entries = history().list(connection);
+        for (DBSchemaMigration migration : migrations) {
+            SchemaMigrationHistory.Entry entry = findEntry(entries, migration.id());
+            if (entry != null && entry.status() == SchemaMigrationHistory.Status.APPLIED) continue;
+            SchemaDiff diff = migrator.plan(connection, migration.desired(), migration.includeDrops());
+            result.add(new DBSchemaMigrationPlan(migration, diff, diff.planHash()));
+        }
+        return Collections.unmodifiableList(result);
+    }
+
     /** Validates that persisted history represents a contiguous migration sequence. */
     public void validate(Connection connection) throws SQLException {
         requireConnection(connection); history().ensureTable(connection); validateEntries(history().list(connection), null);
