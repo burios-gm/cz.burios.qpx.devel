@@ -27,6 +27,7 @@ public final class DBSchemaMigrator {
         requireConnection(connection);
         SchemaDiff diff = plan(connection, desired, includeDrops);
         if (!transactional || diff.isEmpty()) { diff.apply(connection, manager); return diff; }
+        ensureTransactionalDdl();
         boolean originalAutoCommit = connection.getAutoCommit();
         if (!originalAutoCommit) throw new IllegalStateException("transactional migration requires auto-commit to be enabled");
         try {
@@ -60,6 +61,7 @@ public final class DBSchemaMigrator {
             if (existing.status() == SchemaMigrationHistory.Status.APPLIED && existing.planHash().equalsIgnoreCase(planHash)) return diff;
             throw new SchemaMigrationException("Migration ID already exists: " + migrationId + " (status=" + existing.status() + ", planHash=" + existing.planHash() + ")");
         }
+        if (transactional) ensureTransactionalDdl();
         history.start(connection, migrationId, planHash);
         return applyRecorded(connection, diff, migrationId, transactional);
     }
@@ -76,6 +78,7 @@ public final class DBSchemaMigrator {
         if (transactional && !connection.getAutoCommit()) throw new IllegalStateException("recorded transactional migration requires auto-commit to be enabled");
         SchemaDiff diff = plan(connection, desired, includeDrops);
         history.ensureTable(connection);
+        if (transactional) ensureTransactionalDdl();
         history.retry(connection, migrationId, diff.planHash());
         return applyRecorded(connection, diff, migrationId, transactional);
     }
@@ -98,6 +101,10 @@ public final class DBSchemaMigrator {
         } finally { if (!connection.getAutoCommit()) connection.setAutoCommit(originalAutoCommit); }
     }
 
+    private void ensureTransactionalDdl() throws SchemaMigrationException {
+        if (!manager.dialect().supportsTransactionalDdl())
+            throw new SchemaMigrationException("Transactional schema migration is not supported by dialect: " + manager.dialect().name());
+    }
     private void markFailed(Connection connection, String migrationId, Throwable failure) {
         try { history.markFailed(connection, migrationId, failure.toString()); }
         catch (SQLException historyFailure) { failure.addSuppressed(historyFailure); }
