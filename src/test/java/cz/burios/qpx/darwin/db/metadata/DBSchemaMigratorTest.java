@@ -21,6 +21,7 @@ public class DBSchemaMigratorTest {
             String json = plan.toJson();
             if (!json.contains("CREATE_TABLE") || !json.contains("IX_STORE_NAME"))
                 throw new AssertionError("Expected JSON migration plan: " + json);
+            if (plan.planHash().length() != 64) throw new AssertionError("Expected SHA-256 plan hash");
 
             SchemaDiff applied = migrator.migrateTransactional(connection, desired);
             if (applied.size() != 1 || applied.changes().get(0).type() != SchemaChange.Type.CREATE_TABLE)
@@ -58,6 +59,7 @@ public class DBSchemaMigratorTest {
             expectInvalidIndexDependency();
             expectTransactionalRequiresAutoCommit(migrator);
             expectRollback(migrator);
+            expectRecordedMigrationHistory();
         }
         System.out.println("DBSchemaMigratorTest: OK");
     }
@@ -99,6 +101,36 @@ public class DBSchemaMigratorTest {
             catch (Exception expected) {
                 if (DBMetaData.load(connection).table("FIRST") != null) throw new AssertionError("Transactional migration did not roll back FIRST");
                 if (!connection.getAutoCommit()) throw new AssertionError("Auto-commit was not restored after rollback");
+            }
+        }
+    }
+
+    private static void expectRecordedMigrationHistory() throws Exception {
+        try (Connection connection = DriverManager.getConnection("jdbc:h2:mem:schema_migration_history;DB_CLOSE_DELAY=-1")) {
+            DBSchemaMigrator migrator = new DBSchemaMigrator(new H2Dialect());
+            migrator.migrateRecorded(connection, desiredSchema(), "2026-09-14-store-v1");
+            SchemaMigrationHistory.Entry entry = migrator.history().find(connection, "2026-09-14-store-v1");
+            if (entry == null || entry.status() != SchemaMigrationHistory.Status.APPLIED || entry.planHash().length() != 64)
+                throw new AssertionError("Expected APPLIED history entry: " + entry);
+            if (migrator.history().list(connection).size() != 1) throw new AssertionError("Expected one history entry");
+
+            try {
+                migrator.migrateRecorded(connection, desiredSchema(), "2026-09-14-store-v1");
+                throw new AssertionError("Duplicate migration ID should be rejected");
+            } catch (IllegalStateException expected) { }
+
+            DBMetaData broken = new DBMetaData()
+                    .add(new TableMetaData("GOOD").addColumn(new ColumnMetaData("ID").type("BIGINT")))
+                    .add(new TableMetaData("BAD").addColumn(new ColumnMetaData("ID").type("THIS_TYPE_DOES_NOT_EXIST")));
+            try {
+                migrator.migrateRecorded(connection, broken, "2026-09-14-broken-v1");
+                throw new AssertionError("Invalid recorded migration should fail");
+            } catch (Exception expected) {
+                SchemaMigrationHistory.Entry failed = migrator.history().find(connection, "2026-09-14-broken-v1");
+                if (failed == null || failed.status() != SchemaMigrationHistory.Status.FAILED)
+                    throw new AssertionError("Expected FAILED history entry: " + failed);
+                if (DBMetaData.load(connection).table("GOOD") != null)
+                    throw new AssertionError("Failed recorded migration should roll back GOOD");
             }
         }
     }
