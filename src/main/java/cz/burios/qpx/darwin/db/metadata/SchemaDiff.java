@@ -28,6 +28,13 @@ public final class SchemaDiff {
         this.changes = List.copyOf(ordered);
     }
 
+    /** Recreates an immutable diff from its serialized change list. */
+    public static SchemaDiff fromChanges(List<SchemaChange> changes) {
+        if (changes == null) throw new IllegalArgumentException("changes must not be null");
+        if (changes.stream().anyMatch(java.util.Objects::isNull)) throw new IllegalArgumentException("changes must not contain null");
+        return new SchemaDiff(changes);
+    }
+
     public static SchemaDiff compare(DBMetaData actual, DBMetaData desired) { return compare(actual, desired, false); }
 
     public static SchemaDiff compare(DBMetaData actual, DBMetaData desired, boolean includeDrops) {
