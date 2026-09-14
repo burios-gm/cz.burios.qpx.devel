@@ -56,6 +56,19 @@ public final class DBSchemaMigrationRunner {
         return Collections.unmodifiableList(result);
     }
 
+    /** Applies one previously approved plan exactly as it was produced, without replanning. */
+    public SchemaDiff apply(Connection connection, DBSchemaMigrationPlan plan) throws SQLException {
+        requireConnection(connection);
+        if (plan == null) throw new IllegalArgumentException("plan must not be null");
+        DBSchemaMigration migration = findMigration(migrations, plan.migration().id());
+        if (migration == null || migration != plan.migration()) throw new SchemaMigrationException("Migration plan does not belong to this runner: " + plan.migration().id());
+        if (!plan.planHash().equalsIgnoreCase(plan.diff().planHash())) throw new SchemaMigrationException("Migration plan hash does not match its diff: " + migration.id());
+        validate(connection);
+        SchemaMigrationHistory.Entry existing = history().find(connection, migration.id());
+        if (existing != null) throw new SchemaMigrationException("Migration is no longer pending: " + migration.id() + " (status=" + existing.status() + ")");
+        return migrator.applyRecorded(connection, plan.diff(), migration.id(), plan.planHash(), true);
+    }
+
     /** Validates that persisted history represents a contiguous migration sequence. */
     public void validate(Connection connection) throws SQLException {
         requireConnection(connection); history().ensureTable(connection); validateEntries(history().list(connection), null);
