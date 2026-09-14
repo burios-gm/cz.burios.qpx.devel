@@ -44,6 +44,24 @@ public final class SchemaMigrationHistory {
         return new Entry(migrationId, planHash, Status.RUNNING, now, null, null);
     }
 
+    /** Reopens a FAILED migration only when its original plan hash is unchanged. */
+    public Entry retry(Connection connection, String migrationId, String planHash) throws SQLException {
+        validateId(migrationId); validateHash(planHash);
+        Entry existing = find(connection, migrationId);
+        if (existing == null) throw new SchemaMigrationException("Migration history entry not found: " + migrationId);
+        if (existing.status() != Status.FAILED) {
+            throw new SchemaMigrationException("Only FAILED migration can be retried: " + migrationId
+                    + " (status=" + existing.status() + ")");
+        }
+        if (!existing.planHash().equalsIgnoreCase(planHash)) {
+            throw new SchemaMigrationException("Migration plan hash changed: " + migrationId
+                    + " (stored=" + existing.planHash() + ", current=" + planHash + ")");
+        }
+        updateStatus(connection, migrationId, Status.RUNNING, null, null);
+        return new Entry(existing.migrationId(), existing.planHash(), Status.RUNNING,
+                existing.createdAt(), null, null);
+    }
+
     public void markApplied(Connection connection, String migrationId) throws SQLException { markApplied(connection, migrationId, java.time.Instant.now()); }
     public void markApplied(Connection connection, String migrationId, java.time.Instant completedAt) throws SQLException {
         validateId(migrationId); updateStatus(connection, migrationId, Status.APPLIED, completedAt, null);
