@@ -22,6 +22,9 @@ import cz.burios.qpx.darwin.db.dialect.DBDialect;
 
 /** Compares desired table metadata with runtime database metadata and represents an immutable migration plan. */
 public final class SchemaDiff {
+    /** Version of the canonical representation used as input to planHash(). */
+    public static final int PLAN_FORMAT = 1;
+
     private static final ObjectMapper CANONICAL_JSON = new ObjectMapper()
             .configure(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY, true)
             .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true);
@@ -79,7 +82,7 @@ public final class SchemaDiff {
         return Collections.unmodifiableList(sql);
     }
 
-    /** Serializes this plan using deterministic property and map-key ordering. */
+    /** Serializes the changes using deterministic property and map-key ordering. */
     public String toJson() {
         try {
             return CANONICAL_JSON.writeValueAsString(changes);
@@ -88,9 +91,9 @@ public final class SchemaDiff {
         }
     }
 
-    /** Returns the SHA-256 hash of the canonical JSON representation of this plan. */
+    /** Returns the SHA-256 hash of the versioned canonical representation of this plan. */
     public String planHash() {
-        byte[] bytes = toJson().getBytes(StandardCharsets.UTF_8);
+        byte[] bytes = (PLAN_FORMAT + "\n" + toJson()).getBytes(StandardCharsets.UTF_8);
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256").digest(bytes);
             StringBuilder result = new StringBuilder(digest.length * 2);
