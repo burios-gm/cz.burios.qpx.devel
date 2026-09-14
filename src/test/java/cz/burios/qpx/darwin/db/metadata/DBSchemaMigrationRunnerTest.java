@@ -29,16 +29,28 @@ public final class DBSchemaMigrationRunnerTest {
             DBSchemaMigrationApproval approval = DBSchemaMigrationApproval.fromPlan(planned.get(0));
             json = approval.toJson();
             if (!json.contains("\"migrationId\":\"V001\"")) throw new AssertionError("Approval JSON must contain migration ID");
+            if (!json.contains("\"description\":\"create store\"")) throw new AssertionError("Approval JSON must contain migration description");
+            if (!json.contains("\"includeDrops\":false")) throw new AssertionError("Approval JSON must contain includeDrops");
             if (!json.contains("\"planHash\":\"" + approval.planHash() + "\"")) throw new AssertionError("Approval JSON must contain plan hash");
             if (!json.contains("\"changes\"")) throw new AssertionError("Approval JSON must contain executable changes");
 
             DBSchemaMigrationApproval restored = DBSchemaMigrationApproval.fromJson(json);
             if (!restored.migrationId().equals(approval.migrationId())) throw new AssertionError("Restored approval must retain migration ID");
+            if (!restored.description().equals(approval.description())) throw new AssertionError("Restored approval must retain migration description");
+            if (restored.includeDrops() != approval.includeDrops()) throw new AssertionError("Restored approval must retain includeDrops");
             if (!restored.planHash().equals(approval.planHash())) throw new AssertionError("Restored approval hash must match original");
             if (!restored.diff().toJson().equals(approval.diff().toJson())) throw new AssertionError("Restored changes must match original");
             try {
                 DBSchemaMigrationApproval.fromJson(json.replace(approval.planHash(), "0000000000000000000000000000000000000000000000000000000000000000"));
                 throw new AssertionError("Tampered approval hash should be rejected");
+            } catch (IllegalArgumentException expected) { }
+            try {
+                DBSchemaMigrationApproval.fromJson(json.replace("\"description\":\"create store\"", "\"description\":\"changed\""));
+                throw new AssertionError("Approval JSON without description must not be trusted");
+            } catch (IllegalArgumentException expected) { }
+            try {
+                DBSchemaMigrationApproval.fromJson(json.replace(",\"includeDrops\":false", ""));
+                throw new AssertionError("Approval JSON without includeDrops must be rejected");
             } catch (IllegalArgumentException expected) { }
             if (planner.history().list(planningConnection).size() != 0) throw new AssertionError("Planning must not create history entries");
         }
@@ -62,6 +74,13 @@ public final class DBSchemaMigrationRunnerTest {
             if (!approver.planPending(applicationConnection).isEmpty()) throw new AssertionError("Expected no pending plans");
             if (approver.migrate(applicationConnection).size() != 0) throw new AssertionError("Migration run should be idempotent");
             if (approver.history().list(applicationConnection).size() != 2) throw new AssertionError("Expected two history entries");
+
+            try {
+                DBSchemaMigrationApproval mismatchedDescription = new DBSchemaMigrationApproval(
+                        "V002", "wrong description", false, restored.diff(), restored.planHash());
+                approver.applyApproval(applicationConnection, mismatchedDescription);
+                throw new AssertionError("Approval with mismatched migration description should be rejected");
+            } catch (SchemaMigrationException expected) { }
         }
 
         try (Connection connection = DriverManager.getConnection("jdbc:h2:mem:migration_retry;DB_CLOSE_DELAY=-1")) {
