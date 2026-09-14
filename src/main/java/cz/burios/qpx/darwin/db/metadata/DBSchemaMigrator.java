@@ -62,8 +62,7 @@ public final class DBSchemaMigrator {
             throw new SchemaMigrationException("Migration ID already exists: " + migrationId + " (status=" + existing.status() + ", planHash=" + existing.planHash() + ")");
         }
         if (transactional) ensureTransactionalDdl();
-        history.start(connection, migrationId, planHash);
-        return applyRecorded(connection, diff, migrationId, transactional);
+        return startAndApplyRecorded(connection, diff, migrationId, planHash, transactional);
     }
 
     /** Applies an already-created migration plan without replanning it. */
@@ -79,8 +78,7 @@ public final class DBSchemaMigrator {
         SchemaMigrationHistory.Entry existing = history.find(connection, migrationId);
         if (existing != null) throw new SchemaMigrationException("Migration ID already exists: " + migrationId + " (status=" + existing.status() + ", planHash=" + existing.planHash() + ")");
         if (transactional) ensureTransactionalDdl();
-        history.start(connection, migrationId, planHash);
-        return applyRecorded(connection, diff, migrationId, transactional);
+        return startAndApplyRecorded(connection, diff, migrationId, planHash, transactional);
     }
 
     /** Explicitly retries a FAILED migration; the persisted plan hash must still match. */
@@ -97,10 +95,16 @@ public final class DBSchemaMigrator {
         history.ensureTable(connection);
         if (transactional) ensureTransactionalDdl();
         history.retry(connection, migrationId, diff.planHash());
-        return applyRecorded(connection, diff, migrationId, transactional);
+        return applyRecordedChanges(connection, diff, migrationId, transactional);
     }
 
-    private SchemaDiff applyRecorded(Connection connection, SchemaDiff diff, String migrationId, boolean transactional) throws SQLException {
+    private SchemaDiff startAndApplyRecorded(Connection connection, SchemaDiff diff, String migrationId,
+            String planHash, boolean transactional) throws SQLException {
+        history.start(connection, migrationId, planHash);
+        return applyRecordedChanges(connection, diff, migrationId, transactional);
+    }
+
+    private SchemaDiff applyRecordedChanges(Connection connection, SchemaDiff diff, String migrationId, boolean transactional) throws SQLException {
         if (!transactional) {
             try { diff.apply(connection, manager); history.markApplied(connection, migrationId); return diff; }
             catch (SQLException | RuntimeException failure) { markFailed(connection, migrationId, failure); throw failure; }
