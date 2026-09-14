@@ -61,12 +61,30 @@ public final class DBSchemaMigrator {
             throw new SchemaMigrationException("Migration ID already exists: " + migrationId + " (status=" + existing.status() + ", planHash=" + existing.planHash() + ")");
         }
         history.start(connection, migrationId, planHash);
+        return applyRecorded(connection, diff, migrationId, transactional);
+    }
 
+    /** Explicitly retries a FAILED migration; the persisted plan hash must still match. */
+    public SchemaDiff retryRecorded(Connection connection, DBMetaData desired, String migrationId) throws SQLException {
+        return retryRecorded(connection, desired, migrationId, false, true);
+    }
+
+    public SchemaDiff retryRecorded(Connection connection, DBMetaData desired, String migrationId,
+            boolean includeDrops, boolean transactional) throws SQLException {
+        requireConnection(connection);
+        validateMigrationId(migrationId);
+        if (transactional && !connection.getAutoCommit()) throw new IllegalStateException("recorded transactional migration requires auto-commit to be enabled");
+        SchemaDiff diff = plan(connection, desired, includeDrops);
+        history.ensureTable(connection);
+        history.retry(connection, migrationId, diff.planHash());
+        return applyRecorded(connection, diff, migrationId, transactional);
+    }
+
+    private SchemaDiff applyRecorded(Connection connection, SchemaDiff diff, String migrationId, boolean transactional) throws SQLException {
         if (!transactional) {
             try { diff.apply(connection, manager); history.markApplied(connection, migrationId); return diff; }
             catch (SQLException | RuntimeException failure) { markFailed(connection, migrationId, failure); throw failure; }
         }
-
         boolean originalAutoCommit = connection.getAutoCommit();
         try {
             connection.setAutoCommit(false);
