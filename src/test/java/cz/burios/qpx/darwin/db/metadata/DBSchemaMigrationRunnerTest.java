@@ -34,6 +34,34 @@ public final class DBSchemaMigrationRunnerTest {
                 throw new AssertionError("Duplicate migration IDs should fail case-insensitively");
             } catch (IllegalArgumentException expected) { }
         }
+
+        try (Connection connection = DriverManager.getConnection("jdbc:h2:mem:migration_retry;DB_CLOSE_DELAY=-1")) {
+            DBMetaData original = new DBMetaData().add(new TableMetaData("STORE")
+                    .addColumn(new ColumnMetaData("ID").type("BIGINT")));
+            DBMetaData changed = new DBMetaData().add(new TableMetaData("STORE")
+                    .addColumn(new ColumnMetaData("ID").type("BIGINT"))
+                    .addColumn(new ColumnMetaData("NAME").type("VARCHAR(100)")));
+            DBSchemaMigration migration = new DBSchemaMigration("V001", "retry me", original);
+            DBSchemaMigrationRunner runner = new DBSchemaMigrationRunner(new H2Dialect(), migration);
+
+            SchemaDiff originalPlan = runner.migrator().plan(connection, original);
+            runner.history().ensureTable(connection);
+            runner.history().start(connection, migration.id(), originalPlan.planHash());
+            runner.history().markFailed(connection, migration.id(), "simulated failure");
+
+            try {
+                new DBSchemaMigrationRunner(new DBSchemaMigrator(new H2Dialect()),
+                        new DBSchemaMigration("V001", "changed", changed)).retry(connection, "V001");
+                throw new AssertionError("Changed failed migration must be rejected");
+            } catch (SchemaMigrationException expected) { }
+
+            SchemaDiff retried = runner.retry(connection, "V001");
+            if (retried.isEmpty()) throw new AssertionError("Retry should apply the failed migration");
+            if (runner.history().find(connection, "V001").status() != SchemaMigrationHistory.Status.APPLIED)
+                throw new AssertionError("Retry should mark migration APPLIED");
+            if (runner.retry(connection, "V001") != null) throw new AssertionError("Retry of APPLIED migration should fail");
+        }
+
         System.out.println("DBSchemaMigrationRunnerTest: OK");
     }
 }
