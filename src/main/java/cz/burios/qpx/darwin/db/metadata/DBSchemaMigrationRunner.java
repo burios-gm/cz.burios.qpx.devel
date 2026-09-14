@@ -63,6 +63,7 @@ public final class DBSchemaMigrationRunner {
         DBSchemaMigration migration = findMigration(migrations, plan.migration().id());
         if (migration == null) throw new SchemaMigrationException("Migration plan does not belong to this runner: " + plan.migration().id());
         if (!plan.planHash().equalsIgnoreCase(plan.diff().planHash())) throw new SchemaMigrationException("Migration plan hash does not match its diff: " + migration.id());
+        if (plan.migration().includeDrops() != migration.includeDrops()) throw new SchemaMigrationException("Migration plan includeDrops does not match declared migration: " + migration.id());
         validate(connection);
         SchemaMigrationHistory.Entry existing = history().find(connection, migration.id());
         if (existing != null) throw new SchemaMigrationException("Migration is no longer pending: " + migration.id() + " (status=" + existing.status() + ")");
