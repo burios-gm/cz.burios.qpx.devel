@@ -27,10 +27,18 @@ public final class DBSchemaMigrationRunnerTest {
             if (!json.contains("\"migrationId\":\"V001\"")) throw new AssertionError("Plan JSON must contain migration ID");
             if (!json.contains("\"planHash\":\"" + planned.get(0).planHash() + "\"")) throw new AssertionError("Plan JSON must contain plan hash");
             if (!json.contains("\"changes\"")) throw new AssertionError("Plan JSON must contain executable changes");
+            DBSchemaMigrationPlan restored = DBSchemaMigrationPlan.fromJson(json);
+            if (!restored.migration().id().equals(planned.get(0).migration().id())) throw new AssertionError("Restored plan must retain migration ID");
+            if (!restored.planHash().equals(planned.get(0).planHash())) throw new AssertionError("Restored plan hash must match original");
+            if (!restored.diff().toJson().equals(planned.get(0).diff().toJson())) throw new AssertionError("Restored changes must match original");
+            try {
+                DBSchemaMigrationPlan.fromJson(json.replace(planned.get(0).planHash(), "0000000000000000000000000000000000000000000000000000000000000000"));
+                throw new AssertionError("Tampered plan hash should be rejected");
+            } catch (IllegalArgumentException expected) { }
             if (runner.history().list(connection).size() != 0) throw new AssertionError("Planning must not create history entries");
 
-            SchemaDiff approved = runner.apply(connection, planned.get(0));
-            if (approved != planned.get(0).diff()) throw new AssertionError("Apply must use the exact approved diff instance");
+            SchemaDiff approved = runner.apply(connection, restored);
+            if (approved != restored.diff()) throw new AssertionError("Apply must use the exact deserialized diff instance");
             if (runner.history().find(connection, "V001").status() != SchemaMigrationHistory.Status.APPLIED)
                 throw new AssertionError("Approved plan should mark migration APPLIED");
             if (runner.pending(connection).size() != 1) throw new AssertionError("Expected one pending migration after applying first plan");
