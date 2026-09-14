@@ -9,12 +9,14 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-/** Immutable approval artifact containing only migration identity and executable schema changes. */
+/** Immutable approval artifact containing migration identity and executable schema changes. */
 public record DBSchemaMigrationApproval(String migrationId, String description, boolean includeDrops,
-        SchemaDiff diff, String planHash) {
+        int planFormat, SchemaDiff diff, String planHash) {
     public DBSchemaMigrationApproval {
         if (migrationId == null || migrationId.isBlank() || migrationId.length() > 128)
             throw new IllegalArgumentException("migrationId must be 1..128 characters");
+        if (planFormat != SchemaDiff.PLAN_FORMAT)
+            throw new IllegalArgumentException("Unsupported schema migration plan format: " + planFormat);
         if (diff == null) throw new IllegalArgumentException("diff must not be null");
         if (planHash == null || !planHash.matches("[0-9a-fA-F]{64}"))
             throw new IllegalArgumentException("planHash must be a SHA-256 hex string");
@@ -23,10 +25,15 @@ public record DBSchemaMigrationApproval(String migrationId, String description, 
         description = description == null ? "" : description;
     }
 
+    public DBSchemaMigrationApproval(String migrationId, String description, boolean includeDrops,
+            SchemaDiff diff, String planHash) {
+        this(migrationId, description, includeDrops, SchemaDiff.PLAN_FORMAT, diff, planHash);
+    }
+
     public static DBSchemaMigrationApproval fromPlan(DBSchemaMigrationPlan plan) {
         if (plan == null) throw new IllegalArgumentException("plan must not be null");
         return new DBSchemaMigrationApproval(plan.migration().id(), plan.migration().description(),
-                plan.migration().includeDrops(), plan.diff(), plan.planHash());
+                plan.migration().includeDrops(), plan.planFormat(), plan.diff(), plan.planHash());
     }
 
     public String toJson() {
@@ -34,6 +41,7 @@ public record DBSchemaMigrationApproval(String migrationId, String description, 
         json.put("migrationId", migrationId);
         json.put("description", description);
         json.put("includeDrops", includeDrops);
+        json.put("planFormat", planFormat);
         json.put("planHash", planHash);
         json.put("changes", diff.changes());
         try { return new ObjectMapper().writeValueAsString(json); }
@@ -51,12 +59,18 @@ public record DBSchemaMigrationApproval(String migrationId, String description, 
             if (includeDropsNode == null || !includeDropsNode.isBoolean())
                 throw new IllegalArgumentException("includeDrops must be a boolean");
             boolean includeDrops = includeDropsNode.booleanValue();
+            JsonNode planFormatNode = root.get("planFormat");
+            if (planFormatNode == null || !planFormatNode.isIntegralNumber())
+                throw new IllegalArgumentException("planFormat must be an integer");
+            int planFormat = planFormatNode.intValue();
+            if (planFormat != SchemaDiff.PLAN_FORMAT)
+                throw new IllegalArgumentException("Unsupported schema migration plan format: " + planFormat);
             String planHash = text(root, "planHash", true);
             JsonNode changesNode = root.get("changes");
             if (changesNode == null || !changesNode.isArray()) throw new IllegalArgumentException("changes must be an array");
             List<SchemaChange> changes = new ArrayList<>();
             for (JsonNode node : changesNode) changes.add(readChange(node));
-            return new DBSchemaMigrationApproval(migrationId, description, includeDrops, SchemaDiff.fromChanges(changes), planHash);
+            return new DBSchemaMigrationApproval(migrationId, description, includeDrops, planFormat, SchemaDiff.fromChanges(changes), planHash);
         } catch (JsonProcessingException e) { throw new IllegalArgumentException("Invalid schema migration approval JSON", e); }
     }
 
