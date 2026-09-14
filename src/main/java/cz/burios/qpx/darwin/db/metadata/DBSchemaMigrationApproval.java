@@ -46,8 +46,11 @@ public record DBSchemaMigrationApproval(String migrationId, String description, 
             JsonNode root = new ObjectMapper().readTree(json);
             requireObject(root, "plan");
             String migrationId = text(root, "migrationId", true);
-            String description = text(root, "description", false);
-            boolean includeDrops = root.path("includeDrops").asBoolean(false);
+            String description = text(root, "description", true);
+            JsonNode includeDropsNode = root.get("includeDrops");
+            if (includeDropsNode == null || !includeDropsNode.isBoolean())
+                throw new IllegalArgumentException("includeDrops must be a boolean");
+            boolean includeDrops = includeDropsNode.booleanValue();
             String planHash = text(root, "planHash", true);
             JsonNode changesNode = root.get("changes");
             if (changesNode == null || !changesNode.isArray()) throw new IllegalArgumentException("changes must be an array");
