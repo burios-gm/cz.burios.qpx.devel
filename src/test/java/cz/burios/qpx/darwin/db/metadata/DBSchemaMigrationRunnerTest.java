@@ -24,7 +24,18 @@ public final class DBSchemaMigrationRunnerTest {
             if (planned.get(0).diff().isEmpty() || planned.get(0).planHash().length() != 64)
                 throw new AssertionError("Expected non-empty first plan with SHA-256 hash");
             if (runner.history().list(connection).size() != 0) throw new AssertionError("Planning must not create history entries");
-            if (runner.migrate(connection).size() != 2) throw new AssertionError("Expected two applied migrations");
+
+            SchemaDiff approved = runner.apply(connection, planned.get(0));
+            if (approved != planned.get(0).diff()) throw new AssertionError("Apply must use the exact approved diff instance");
+            if (runner.history().find(connection, "V001").status() != SchemaMigrationHistory.Status.APPLIED)
+                throw new AssertionError("Approved plan should mark migration APPLIED");
+            if (runner.pending(connection).size() != 1) throw new AssertionError("Expected one pending migration after applying first plan");
+            try {
+                runner.apply(connection, planned.get(0));
+                throw new AssertionError("An already applied plan must not be applied twice");
+            } catch (SchemaMigrationException expected) { }
+
+            if (runner.migrate(connection).size() != 1) throw new AssertionError("Expected remaining migration to be applied");
             if (!runner.pending(connection).isEmpty()) throw new AssertionError("Expected no pending migrations");
             if (!runner.planPending(connection).isEmpty()) throw new AssertionError("Expected no pending plans");
             if (runner.migrate(connection).size() != 0) throw new AssertionError("Migration run should be idempotent");
