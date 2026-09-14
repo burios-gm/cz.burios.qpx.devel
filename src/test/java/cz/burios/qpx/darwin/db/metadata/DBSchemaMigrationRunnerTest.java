@@ -31,6 +31,7 @@ public final class DBSchemaMigrationRunnerTest {
             if (!json.contains("\"migrationId\":\"V001\"")) throw new AssertionError("Approval JSON must contain migration ID");
             if (!json.contains("\"description\":\"create store\"")) throw new AssertionError("Approval JSON must contain migration description");
             if (!json.contains("\"includeDrops\":false")) throw new AssertionError("Approval JSON must contain includeDrops");
+            if (!json.contains("\"planFormat\":1")) throw new AssertionError("Approval JSON must contain plan format");
             if (!json.contains("\"planHash\":\"" + approval.planHash() + "\"")) throw new AssertionError("Approval JSON must contain plan hash");
             if (!json.contains("\"changes\"")) throw new AssertionError("Approval JSON must contain executable changes");
 
@@ -38,6 +39,7 @@ public final class DBSchemaMigrationRunnerTest {
             if (!restored.migrationId().equals(approval.migrationId())) throw new AssertionError("Restored approval must retain migration ID");
             if (!restored.description().equals(approval.description())) throw new AssertionError("Restored approval must retain migration description");
             if (restored.includeDrops() != approval.includeDrops()) throw new AssertionError("Restored approval must retain includeDrops");
+            if (restored.planFormat() != approval.planFormat()) throw new AssertionError("Restored approval must retain plan format");
             if (!restored.planHash().equals(approval.planHash())) throw new AssertionError("Restored approval hash must match original");
             if (!restored.diff().toJson().equals(approval.diff().toJson())) throw new AssertionError("Restored changes must match original");
             try {
@@ -45,8 +47,8 @@ public final class DBSchemaMigrationRunnerTest {
                 throw new AssertionError("Tampered approval hash should be rejected");
             } catch (IllegalArgumentException expected) { }
             try {
-                DBSchemaMigrationApproval.fromJson(json.replace("\"description\":\"create store\"", "\"description\":\"changed\""));
-                throw new AssertionError("Approval JSON without description must not be trusted");
+                DBSchemaMigrationApproval.fromJson(json.replace("\"planFormat\":1", "\"planFormat\":999"));
+                throw new AssertionError("Unknown plan format should be rejected");
             } catch (IllegalArgumentException expected) { }
             try {
                 DBSchemaMigrationApproval.fromJson(json.replace(",\"includeDrops\":false", ""));
@@ -63,8 +65,9 @@ public final class DBSchemaMigrationRunnerTest {
             if (!approved.toJson().equals(restored.diff().toJson())) throw new AssertionError("Approval must apply the exact deserialized changes");
             if (approver.history().find(applicationConnection, "V001").status() != SchemaMigrationHistory.Status.APPLIED)
                 throw new AssertionError("Approved migration should be APPLIED");
-            if (!applicationConnection.getMetaData().getTables(null, null, "STORE", null).next())
-                throw new AssertionError("Approved migration should create STORE table");
+            try (var tables = applicationConnection.getMetaData().getTables(null, null, "STORE", null)) {
+                if (!tables.next()) throw new AssertionError("Approved migration should create STORE table");
+            }
             try {
                 approver.applyJson(applicationConnection, json);
                 throw new AssertionError("An already applied approval must not be applied twice");
@@ -91,10 +94,12 @@ public final class DBSchemaMigrationRunnerTest {
             DBSchemaMigration migration = new DBSchemaMigration("V001", "retry me", original);
             DBSchemaMigrationRunner runner = new DBSchemaMigrationRunner(new H2Dialect(), migration);
             SchemaDiff originalPlan = runner.migrator().plan(connection, original);
-            runner.history().ensureTable(connection); runner.history().start(connection, migration.id(), originalPlan.planHash());
+            runner.history().ensureTable(connection);
+            runner.history().start(connection, migration.id(), originalPlan.planHash());
             runner.history().markFailed(connection, migration.id(), "simulated failure");
             try {
-                new DBSchemaMigrationRunner(new DBSchemaMigrator(new H2Dialect()), List.of(new DBSchemaMigration("V001", "changed", changed))).retry(connection, "V001");
+                new DBSchemaMigrationRunner(new DBSchemaMigrator(new H2Dialect()),
+                        List.of(new DBSchemaMigration("V001", "retry me", changed))).retry(connection, "V001");
                 throw new AssertionError("Changed failed migration must be rejected");
             } catch (SchemaMigrationException expected) { }
             SchemaDiff retried = runner.retry(connection, "V001");
@@ -105,8 +110,11 @@ public final class DBSchemaMigrationRunnerTest {
             catch (SchemaMigrationException expected) { }
         }
 
+        DBMetaData duplicateDesired = new DBMetaData().add(new TableMetaData("DUPLICATE"));
         try {
-            new DBSchemaMigrationRunner(new H2Dialect(), List.of(new DBSchemaMigration("V001", "one", v1), new DBSchemaMigration("v001", "duplicate", v2)));
+            new DBSchemaMigrationRunner(new H2Dialect(), List.of(
+                    new DBSchemaMigration("V001", "one", duplicateDesired),
+                    new DBSchemaMigration("v001", "duplicate", duplicateDesired)));
             throw new AssertionError("Duplicate migration IDs should fail case-insensitively");
         } catch (IllegalArgumentException expected) { }
 
