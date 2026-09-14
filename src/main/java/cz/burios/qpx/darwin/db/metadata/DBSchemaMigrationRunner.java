@@ -70,6 +70,11 @@ public final class DBSchemaMigrationRunner {
         return migrator.applyRecorded(connection, plan.diff(), migration.id(), plan.planHash(), true);
     }
 
+    /** Applies a previously approved JSON plan without rebuilding it from current metadata. */
+    public SchemaDiff applyJson(Connection connection, String json) throws SQLException {
+        return apply(connection, DBSchemaMigrationPlan.fromJson(json));
+    }
+
     /** Validates that persisted history represents a contiguous migration sequence. */
     public void validate(Connection connection) throws SQLException {
         requireConnection(connection); history().ensureTable(connection); validateEntries(history().list(connection), null);
