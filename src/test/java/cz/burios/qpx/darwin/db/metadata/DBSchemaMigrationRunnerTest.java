@@ -18,8 +18,15 @@ public final class DBSchemaMigrationRunnerTest {
             DBSchemaMigrationRunner runner = new DBSchemaMigrationRunner(new H2Dialect(), List.of(
                     new DBSchemaMigration("V001", "create store", v1), new DBSchemaMigration("V002", "create product", v2)));
             if (runner.pending(connection).size() != 2) throw new AssertionError("Expected two pending migrations");
+            List<DBSchemaMigrationPlan> planned = runner.planPending(connection);
+            if (planned.size() != 2) throw new AssertionError("Expected two planned migrations");
+            if (planned.get(0).migration() != runner.migrations().get(0)) throw new AssertionError("Plan must retain migration declaration");
+            if (planned.get(0).diff().isEmpty() || planned.get(0).planHash().length() != 64)
+                throw new AssertionError("Expected non-empty first plan with SHA-256 hash");
+            if (runner.history().list(connection).size() != 0) throw new AssertionError("Planning must not create history entries");
             if (runner.migrate(connection).size() != 2) throw new AssertionError("Expected two applied migrations");
             if (!runner.pending(connection).isEmpty()) throw new AssertionError("Expected no pending migrations");
+            if (!runner.planPending(connection).isEmpty()) throw new AssertionError("Expected no pending plans");
             if (runner.migrate(connection).size() != 0) throw new AssertionError("Migration run should be idempotent");
             if (runner.history().list(connection).size() != 2) throw new AssertionError("Expected two history entries");
             try {
