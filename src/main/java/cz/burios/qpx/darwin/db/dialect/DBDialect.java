@@ -12,6 +12,8 @@ import cz.burios.qpx.darwin.db.metadata.TableMetaData;
 /** Database-specific SQL and JDBC metadata conventions. */
 public interface DBDialect {
     String name();
+    /** Whether the database can reliably roll back the DDL emitted by the schema manager. */
+    default boolean supportsTransactionalDdl() { return true; }
     default String catalog(Connection connection) throws SQLException { return connection.getCatalog(); }
     default String schema(Connection connection) throws SQLException { return connection.getSchema(); }
     default void loadTableOptions(Connection connection, String catalog, String schema, TableMetaData table) throws SQLException {}
