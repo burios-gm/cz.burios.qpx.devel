@@ -14,12 +14,18 @@ import java.util.Locale;
 import java.util.Map;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 
 import cz.burios.qpx.darwin.db.dialect.DBDialect;
 
 /** Compares desired table metadata with runtime database metadata and represents an immutable migration plan. */
 public final class SchemaDiff {
+    private static final ObjectMapper CANONICAL_JSON = new ObjectMapper()
+            .configure(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY, true)
+            .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true);
+
     private final List<SchemaChange> changes;
 
     private SchemaDiff(List<SchemaChange> changes) {
@@ -73,10 +79,10 @@ public final class SchemaDiff {
         return Collections.unmodifiableList(sql);
     }
 
-    /** Serializes this plan for logging, administration and transport. */
+    /** Serializes this plan using deterministic property and map-key ordering. */
     public String toJson() {
         try {
-            return new ObjectMapper().writeValueAsString(changes);
+            return CANONICAL_JSON.writeValueAsString(changes);
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Cannot serialize schema migration plan", e);
         }
