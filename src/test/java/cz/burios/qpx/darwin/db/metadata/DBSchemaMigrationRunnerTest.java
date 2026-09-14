@@ -23,6 +23,10 @@ public final class DBSchemaMigrationRunnerTest {
             if (planned.get(0).migration() != runner.migrations().get(0)) throw new AssertionError("Plan must retain migration declaration");
             if (planned.get(0).diff().isEmpty() || planned.get(0).planHash().length() != 64)
                 throw new AssertionError("Expected non-empty first plan with SHA-256 hash");
+            String json = planned.get(0).toJson();
+            if (!json.contains("\"migrationId\":\"V001\"")) throw new AssertionError("Plan JSON must contain migration ID");
+            if (!json.contains("\"planHash\":\"" + planned.get(0).planHash() + "\"")) throw new AssertionError("Plan JSON must contain plan hash");
+            if (!json.contains("\"changes\"")) throw new AssertionError("Plan JSON must contain executable changes");
             if (runner.history().list(connection).size() != 0) throw new AssertionError("Planning must not create history entries");
 
             SchemaDiff approved = runner.apply(connection, planned.get(0));
