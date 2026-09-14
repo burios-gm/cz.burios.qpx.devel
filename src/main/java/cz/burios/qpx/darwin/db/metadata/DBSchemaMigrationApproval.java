@@ -52,7 +52,7 @@ public record DBSchemaMigrationApproval(String migrationId, String description, 
         if (json == null || json.isBlank()) throw new IllegalArgumentException("json must not be blank");
         try {
             JsonNode root = new ObjectMapper().readTree(json);
-            requireObject(root, "plan");
+            requireObject(root, "approval");
             String migrationId = text(root, "migrationId", true);
             String description = text(root, "description", true);
             JsonNode includeDropsNode = root.get("includeDrops");
