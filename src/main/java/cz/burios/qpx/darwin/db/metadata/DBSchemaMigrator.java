@@ -66,6 +66,23 @@ public final class DBSchemaMigrator {
         return applyRecorded(connection, diff, migrationId, transactional);
     }
 
+    /** Applies an already-created migration plan without replanning it. */
+    public SchemaDiff applyRecorded(Connection connection, SchemaDiff diff, String migrationId, String planHash,
+            boolean transactional) throws SQLException {
+        requireConnection(connection);
+        validateMigrationId(migrationId);
+        if (diff == null) throw new IllegalArgumentException("diff must not be null");
+        if (planHash == null || !planHash.matches("[0-9a-fA-F]{64}")) throw new IllegalArgumentException("planHash must be a SHA-256 hex string");
+        if (!planHash.equalsIgnoreCase(diff.planHash())) throw new SchemaMigrationException("Migration plan hash does not match supplied diff: " + migrationId);
+        if (transactional && !connection.getAutoCommit()) throw new IllegalStateException("recorded transactional migration requires auto-commit to be enabled");
+        history.ensureTable(connection);
+        SchemaMigrationHistory.Entry existing = history.find(connection, migrationId);
+        if (existing != null) throw new SchemaMigrationException("Migration ID already exists: " + migrationId + " (status=" + existing.status() + ", planHash=" + existing.planHash() + ")");
+        if (transactional) ensureTransactionalDdl();
+        history.start(connection, migrationId, planHash);
+        return applyRecorded(connection, diff, migrationId, transactional);
+    }
+
     /** Explicitly retries a FAILED migration; the persisted plan hash must still match. */
     public SchemaDiff retryRecorded(Connection connection, DBMetaData desired, String migrationId) throws SQLException {
         return retryRecorded(connection, desired, migrationId, false, true);
