@@ -1,5 +1,8 @@
 package cz.burios.qpx.darwin.db.metadata;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -69,6 +72,19 @@ public final class SchemaDiff {
             return new ObjectMapper().writeValueAsString(changes);
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Cannot serialize schema migration plan", e);
+        }
+    }
+
+    /** Returns the SHA-256 hash of the canonical JSON representation of this plan. */
+    public String planHash() {
+        byte[] bytes = toJson().getBytes(StandardCharsets.UTF_8);
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(bytes);
+            StringBuilder result = new StringBuilder(digest.length * 2);
+            for (byte value : digest) result.append(String.format(Locale.ROOT, "%02x", value & 0xff));
+            return result.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is not available", e);
         }
     }
 
