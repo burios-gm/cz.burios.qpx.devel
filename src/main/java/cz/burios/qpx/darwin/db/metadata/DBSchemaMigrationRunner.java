@@ -60,19 +60,26 @@ public final class DBSchemaMigrationRunner {
     public SchemaDiff apply(Connection connection, DBSchemaMigrationPlan plan) throws SQLException {
         requireConnection(connection);
         if (plan == null) throw new IllegalArgumentException("plan must not be null");
-        DBSchemaMigration migration = findMigration(migrations, plan.migration().id());
-        if (migration == null) throw new SchemaMigrationException("Migration plan does not belong to this runner: " + plan.migration().id());
-        if (!plan.planHash().equalsIgnoreCase(plan.diff().planHash())) throw new SchemaMigrationException("Migration plan hash does not match its diff: " + migration.id());
-        if (plan.migration().includeDrops() != migration.includeDrops()) throw new SchemaMigrationException("Migration plan includeDrops does not match declared migration: " + migration.id());
+        return applyApproval(connection, DBSchemaMigrationApproval.fromPlan(plan));
+    }
+
+    /** Applies a standalone approval artifact without requiring desired metadata to be embedded in it. */
+    public SchemaDiff applyApproval(Connection connection, DBSchemaMigrationApproval approval) throws SQLException {
+        requireConnection(connection);
+        if (approval == null) throw new IllegalArgumentException("approval must not be null");
+        DBSchemaMigration migration = findMigration(migrations, approval.migrationId());
+        if (migration == null) throw new SchemaMigrationException("Migration approval does not belong to this runner: " + approval.migrationId());
+        if (approval.includeDrops() != migration.includeDrops()) throw new SchemaMigrationException("Migration approval includeDrops does not match declared migration: " + migration.id());
+        if (!approval.planHash().equalsIgnoreCase(approval.diff().planHash())) throw new SchemaMigrationException("Migration approval hash does not match its diff: " + migration.id());
         validate(connection);
         SchemaMigrationHistory.Entry existing = history().find(connection, migration.id());
         if (existing != null) throw new SchemaMigrationException("Migration is no longer pending: " + migration.id() + " (status=" + existing.status() + ")");
-        return migrator.applyRecorded(connection, plan.diff(), migration.id(), plan.planHash(), true);
+        return migrator.applyRecorded(connection, approval.diff(), migration.id(), approval.planHash(), true);
     }
 
     /** Applies a previously approved JSON plan without rebuilding it from current metadata. */
     public SchemaDiff applyJson(Connection connection, String json) throws SQLException {
-        return apply(connection, DBSchemaMigrationPlan.fromJson(json));
+        return applyApproval(connection, DBSchemaMigrationApproval.fromJson(json));
     }
 
     /** Validates that persisted history represents a contiguous migration sequence. */
