@@ -20,12 +20,15 @@ public record DBSchemaMigrationPlan(DBSchemaMigration migration, SchemaDiff diff
             throw new IllegalArgumentException("planHash does not match diff");
     }
 
+    public int planFormat() { return SchemaDiff.PLAN_FORMAT; }
+
     /** Serializes the complete approval artifact, including migration identity and executable changes. */
     public String toJson() {
         Map<String, Object> json = new LinkedHashMap<>();
         json.put("migrationId", migration.id());
         json.put("description", migration.description());
         json.put("includeDrops", migration.includeDrops());
+        json.put("planFormat", planFormat());
         json.put("planHash", planHash);
         json.put("changes", diff.changes());
         try {
@@ -43,8 +46,17 @@ public record DBSchemaMigrationPlan(DBSchemaMigration migration, SchemaDiff diff
             JsonNode root = mapper.readTree(json);
             requireObject(root, "plan");
             String migrationId = text(root, "migrationId", true);
-            String description = text(root, "description", false);
-            boolean includeDrops = root.path("includeDrops").asBoolean(false);
+            String description = text(root, "description", true);
+            JsonNode includeDropsNode = root.get("includeDrops");
+            if (includeDropsNode == null || !includeDropsNode.isBoolean())
+                throw new IllegalArgumentException("includeDrops must be a boolean");
+            boolean includeDrops = includeDropsNode.booleanValue();
+            JsonNode planFormatNode = root.get("planFormat");
+            if (planFormatNode == null || !planFormatNode.isIntegralNumber())
+                throw new IllegalArgumentException("planFormat must be an integer");
+            int planFormat = planFormatNode.intValue();
+            if (planFormat != SchemaDiff.PLAN_FORMAT)
+                throw new IllegalArgumentException("Unsupported schema migration plan format: " + planFormat);
             String planHash = text(root, "planHash", true);
             JsonNode changesNode = root.get("changes");
             if (changesNode == null || !changesNode.isArray()) throw new IllegalArgumentException("changes must be an array");
