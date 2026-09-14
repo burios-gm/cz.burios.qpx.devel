@@ -8,12 +8,14 @@ import cz.burios.qpx.darwin.db.dialect.DBDialect;
 /** Plans and applies metadata-driven database schema migrations. */
 public final class DBSchemaMigrator {
     private final DBSchemaManager manager;
+    private final SchemaMigrationHistory history = new SchemaMigrationHistory();
 
     public DBSchemaMigrator(DBDialect dialect) {
         this.manager = new DBSchemaManager(dialect);
     }
 
     public DBSchemaManager manager() { return manager; }
+    public SchemaMigrationHistory history() { return history; }
 
     /** Creates a migration plan without executing it. */
     public SchemaDiff plan(Connection connection, DBMetaData desired) throws SQLException {
@@ -82,6 +84,77 @@ public final class DBSchemaMigrator {
     /** Convenience method for a transactional migration with explicit drops. */
     public SchemaDiff migrateTransactional(Connection connection, DBMetaData desired, boolean includeDrops) throws SQLException {
         return migrate(connection, desired, includeDrops, true);
+    }
+
+    /** Applies and records a migration using a transaction and no destructive changes. */
+    public SchemaDiff migrateRecorded(Connection connection, DBMetaData desired, String migrationId) throws SQLException {
+        return migrateRecorded(connection, desired, migrationId, false, true);
+    }
+
+    /** Applies and records a migration with explicit drop and transaction policies. */
+    public SchemaDiff migrateRecorded(Connection connection, DBMetaData desired, String migrationId,
+            boolean includeDrops, boolean transactional) throws SQLException {
+        requireConnection(connection);
+        validateMigrationId(migrationId);
+        if (transactional && !connection.getAutoCommit())
+            throw new IllegalStateException("recorded transactional migration requires auto-commit to be enabled");
+
+        SchemaDiff diff = plan(connection, desired, includeDrops);
+        history.ensureTable(connection);
+        String planHash = diff.planHash();
+        if (history.find(connection, migrationId) != null)
+            throw new IllegalStateException("migration ID already exists: " + migrationId);
+        history.start(connection, migrationId, planHash);
+
+        if (!transactional) {
+            try {
+                diff.apply(connection, manager);
+                history.markApplied(connection, migrationId);
+                return diff;
+            } catch (SQLException | RuntimeException failure) {
+                markFailed(connection, migrationId, failure);
+                throw failure;
+            }
+        }
+
+        boolean originalAutoCommit = connection.getAutoCommit();
+        try {
+            connection.setAutoCommit(false);
+            try {
+                diff.apply(connection, manager);
+                history.markApplied(connection, migrationId);
+                connection.commit();
+                return diff;
+            } catch (SQLException | RuntimeException failure) {
+                try {
+                    connection.rollback();
+                } catch (SQLException rollbackFailure) {
+                    failure.addSuppressed(rollbackFailure);
+                }
+                try {
+                    connection.setAutoCommit(true);
+                    history.markFailed(connection, migrationId, failure.toString());
+                } catch (SQLException historyFailure) {
+                    failure.addSuppressed(historyFailure);
+                }
+                throw failure;
+            }
+        } finally {
+            if (!connection.getAutoCommit()) connection.setAutoCommit(originalAutoCommit);
+        }
+    }
+
+    private void markFailed(Connection connection, String migrationId, Throwable failure) {
+        try {
+            history.markFailed(connection, migrationId, failure.toString());
+        } catch (SQLException historyFailure) {
+            failure.addSuppressed(historyFailure);
+        }
+    }
+
+    private static void validateMigrationId(String migrationId) {
+        if (migrationId == null || migrationId.isBlank() || migrationId.length() > 128)
+            throw new IllegalArgumentException("migrationId must be 1..128 characters");
     }
 
     private static void requireConnection(Connection connection) {
