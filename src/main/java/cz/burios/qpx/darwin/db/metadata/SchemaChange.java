@@ -48,6 +48,14 @@ public final class SchemaChange {
     public IndexMetaData index() { return index; }
     public String indexName() { return indexName; }
 
+    /* JavaBean accessors are intentionally provided for Jackson serialization. */
+    public Type getType() { return type; }
+    public TableMetaData getTable() { return table; }
+    public ColumnMetaData getColumn() { return column; }
+    public String getColumnName() { return columnName; }
+    public IndexMetaData getIndex() { return index; }
+    public String getIndexName() { return indexName; }
+
     @Override public String toString() {
         return switch (type) {
             case CREATE_TABLE -> "CREATE_TABLE " + table.name;
