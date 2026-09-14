@@ -2,7 +2,6 @@ package cz.burios.qpx.darwin.db.metadata;
 
 import java.util.List;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
@@ -15,7 +14,9 @@ public final class DBSchemaMigrationApprovalTest {
                 .param("ENGINE", "InnoDB")
                 .addColumn(new ColumnMetaData("ID").longType().primaryKey());
         SchemaDiff diff = SchemaDiff.fromChanges(List.of(SchemaChange.createTable(table)));
-        DBSchemaMigration migration = new DBSchemaMigration("2026-001", "Create STORE", new DBMetaData(), false);
+        // includeDrops defaults to false; using the 3-argument constructor keeps this test
+        // compatible with the original migration API as well.
+        DBSchemaMigration migration = new DBSchemaMigration("2026-001", "Create STORE", new DBMetaData());
         DBSchemaMigrationPlan plan = new DBSchemaMigrationPlan(migration, diff, diff.planHash());
 
         DBSchemaMigrationApproval approval = plan.approval();
