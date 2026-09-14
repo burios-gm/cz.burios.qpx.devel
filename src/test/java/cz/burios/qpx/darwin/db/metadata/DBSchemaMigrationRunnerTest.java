@@ -42,8 +42,8 @@ public final class DBSchemaMigrationRunnerTest {
             runner.history().start(connection, migration.id(), originalPlan.planHash());
             runner.history().markFailed(connection, migration.id(), "simulated failure");
             try {
-                new DBSchemaMigrationRunner(new DBSchemaMigrator(new H2Dialect()), new DBSchemaMigration("V001", "changed", changed))
-                        .retry(connection, "V001");
+                new DBSchemaMigrationRunner(new DBSchemaMigrator(new H2Dialect()), List.of(
+                        new DBSchemaMigration("V001", "changed", changed))).retry(connection, "V001");
                 throw new AssertionError("Changed failed migration must be rejected");
             } catch (SchemaMigrationException expected) { }
             SchemaDiff retried = runner.retry(connection, "V001");
