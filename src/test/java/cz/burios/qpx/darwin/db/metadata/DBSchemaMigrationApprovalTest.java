@@ -12,7 +12,7 @@ public final class DBSchemaMigrationApprovalTest {
     public static void main(String[] args) throws Exception {
         TableMetaData table = new TableMetaData("STORE")
                 .param("ENGINE", "InnoDB")
-                .addColumn(new ColumnMetaData("ID").longType().primaryKey());
+                .addColumn(new ColumnMetaData("ID").longType().primaryKey(true));
         SchemaDiff diff = SchemaDiff.fromChanges(List.of(SchemaChange.createTable(table)));
         // includeDrops defaults to false; using the 3-argument constructor keeps this test
         // compatible with the original migration API as well.
