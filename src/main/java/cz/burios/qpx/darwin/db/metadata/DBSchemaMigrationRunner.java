@@ -49,7 +49,7 @@ public final class DBSchemaMigrationRunner {
         List<SchemaMigrationHistory.Entry> entries = history().list(connection);
         List<DBSchemaMigration> result = new ArrayList<>();
         for (DBSchemaMigration migration : migrations) {
-            SchemaMigrationHistory.Entry entry = find(entries, migration.id());
+            SchemaMigrationHistory.Entry entry = findEntry(entries, migration.id());
             if (entry == null || entry.status() != SchemaMigrationHistory.Status.APPLIED) result.add(migration);
         }
         return Collections.unmodifiableList(result);
@@ -62,7 +62,7 @@ public final class DBSchemaMigrationRunner {
         List<SchemaMigrationHistory.Entry> entries = history().list(connection);
         boolean previousPending = false;
         for (DBSchemaMigration migration : migrations) {
-            SchemaMigrationHistory.Entry entry = find(entries, migration.id());
+            SchemaMigrationHistory.Entry entry = findEntry(entries, migration.id());
             if (entry == null) {
                 previousPending = true;
                 continue;
@@ -80,7 +80,7 @@ public final class DBSchemaMigrationRunner {
         }
         // An applied history entry that is not part of the declared sequence is unsafe to ignore.
         for (SchemaMigrationHistory.Entry entry : entries) {
-            if (find(migrations, entry.migrationId()) == null) {
+            if (findMigration(migrations, entry.migrationId()) == null) {
                 throw new SchemaMigrationException("Migration history contains undeclared migration: " + entry.migrationId());
             }
         }
@@ -100,12 +100,12 @@ public final class DBSchemaMigrationRunner {
         return Collections.unmodifiableList(applied);
     }
 
-    private static SchemaMigrationHistory.Entry find(List<SchemaMigrationHistory.Entry> entries, String id) {
+    private static SchemaMigrationHistory.Entry findEntry(List<SchemaMigrationHistory.Entry> entries, String id) {
         for (SchemaMigrationHistory.Entry entry : entries) if (entry.migrationId().equals(id)) return entry;
         return null;
     }
 
-    private static DBSchemaMigration find(List<DBSchemaMigration> migrations, String id) {
+    private static DBSchemaMigration findMigration(List<DBSchemaMigration> migrations, String id) {
         for (DBSchemaMigration migration : migrations) if (migration.id().equals(id)) return migration;
         return null;
     }
