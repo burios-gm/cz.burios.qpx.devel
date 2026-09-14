@@ -12,6 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.MapperFeature;
@@ -40,7 +41,7 @@ public final class SchemaDiff {
     /** Recreates an immutable diff from its serialized change list. */
     public static SchemaDiff fromChanges(List<SchemaChange> changes) {
         if (changes == null) throw new IllegalArgumentException("changes must not be null");
-        if (changes.stream().anyMatch(java.util.Objects::isNull)) throw new IllegalArgumentException("changes must not contain null");
+        if (changes.stream().anyMatch(Objects::isNull)) throw new IllegalArgumentException("changes must not contain null");
         return new SchemaDiff(changes);
     }
 
@@ -118,6 +119,18 @@ public final class SchemaDiff {
             case DROP_INDEX -> manager.dropIndex(connection, change.table(), change.indexName());
             case DROP_TABLE -> manager.dropTable(connection, change.table());
         }
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        if (this == other) return true;
+        if (!(other instanceof SchemaDiff that)) return false;
+        return toJson().equals(that.toJson());
+    }
+
+    @Override
+    public int hashCode() {
+        return toJson().hashCode();
     }
 
     private static int phase(SchemaChange.Type type) {
