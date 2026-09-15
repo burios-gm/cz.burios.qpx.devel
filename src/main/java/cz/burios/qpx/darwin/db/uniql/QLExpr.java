@@ -44,6 +44,8 @@ public abstract class QLExpr {
     public QLCondition le(Object x) { return condition("<=", x); }
     public QLCondition like(Object x) { return condition("LIKE", x); }
     public QLIn in(Object... values) { return new QLIn(this, values); }
+    public QLIn in(QLSelect select) { return new QLIn(this).select(select); }
+    public QLIn in(QLSubSelect select) { return new QLIn(this).select(select); }
     public QLBetween between(Object lower, Object upper) { return new QLBetween(this, lower, upper); }
     public QLIsNull isNull() { return new QLIsNull(this, false); }
     public QLIsNull isNotNull() { return new QLIsNull(this, true); }
