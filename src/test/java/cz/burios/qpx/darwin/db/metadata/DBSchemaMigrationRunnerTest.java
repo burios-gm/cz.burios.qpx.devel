@@ -4,6 +4,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.util.List;
 
+import cz.burios.qpx.darwin.db.dialect.DBDialect;
 import cz.burios.qpx.darwin.db.dialect.H2Dialect;
 
 /** Executable integration test for ordered, persistent schema migration execution. */
@@ -117,6 +118,43 @@ public final class DBSchemaMigrationRunnerTest {
                     new DBSchemaMigration("v001", "duplicate", duplicateDesired)));
             throw new AssertionError("Duplicate migration IDs should fail case-insensitively");
         } catch (IllegalArgumentException expected) { }
+
+        // The default runner mode must follow the dialect: a non-transactional DDL dialect
+        // must be usable without forcing a transaction around DDL.
+        H2Dialect h2 = new H2Dialect();
+        DBDialect nonTransactional = new DBDialect() {
+            @Override public String name() { return "H2-NONTRANSACTIONAL-TEST"; }
+            @Override public boolean supportsTransactionalDdl() { return false; }
+            @Override public String columnDefinition(ColumnMetaData column) { return h2.columnDefinition(column); }
+        };
+        try (Connection connection = DriverManager.getConnection("jdbc:h2:mem:migration_nontransactional_default;DB_CLOSE_DELAY=-1")) {
+            DBSchemaMigration migration = new DBSchemaMigration("V001", "non transactional default", duplicateDesired);
+            DBSchemaMigrationRunner runner = new DBSchemaMigrationRunner(nonTransactional, migration);
+            if (runner.migrate(connection).size() != 1) throw new AssertionError("Default runner mode should allow non-transactional DDL dialect");
+            if (runner.history().find(connection, "V001").status() != SchemaMigrationHistory.Status.APPLIED)
+                throw new AssertionError("Non-transactional default migration should be APPLIED");
+            try {
+                runner.migrate(connection, true);
+                throw new AssertionError("Explicit transactional mode should reject unsupported DDL dialect");
+            } catch (SchemaMigrationException expected) { }
+        }
+
+        // JDBC character-case rules can allow V001 and v001 to coexist even though the
+        // runner treats migration IDs case-insensitively; validation must reject that state.
+        try (Connection connection = DriverManager.getConnection("jdbc:h2:mem:migration_duplicate_history;DB_CLOSE_DELAY=-1")) {
+            DBSchemaMigration migration = new DBSchemaMigration("V001", "one", duplicateDesired);
+            DBSchemaMigrationRunner runner = new DBSchemaMigrationRunner(new H2Dialect(), migration);
+            runner.history().ensureTable(connection);
+            runner.history().start(connection, "V001", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+            runner.history().markApplied(connection, "V001");
+            try (var statement = connection.createStatement()) {
+                statement.executeUpdate("INSERT INTO QPX_SCHEMA_MIGRATION (MIGRATION_ID, PLAN_HASH, STATUS, CREATED_AT, COMPLETED_AT, ERROR_MESSAGE) VALUES ('v001', 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', 'APPLIED', 2, 2, NULL)");
+            }
+            try {
+                runner.validate(connection);
+                throw new AssertionError("Case-insensitive duplicate history IDs should be rejected");
+            } catch (SchemaMigrationException expected) { }
+        }
 
         System.out.println("DBSchemaMigrationRunnerTest: OK");
     }
