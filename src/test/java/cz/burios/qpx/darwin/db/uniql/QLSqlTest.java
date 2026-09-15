@@ -7,6 +7,7 @@ public class QLSqlTest {
         rendersArithmeticAndParameters();
         rendersJoinFunctionGroupHavingOrderAndLimit();
         rendersCaseExistsAndSubselect();
+        rendersWhereBooleanComposition();
         rendersJsonRoundTrip();
         System.out.println("QLSqlTest: OK");
     }
@@ -63,6 +64,20 @@ public class QLSqlTest {
                         + "FROM users AS u WHERE (EXISTS (SELECT o.id FROM orders AS o WHERE (o.user_id = u.id)))",
                 result.sql());
         assertEquals(java.util.List.of(18, "child", 65, "adult", "senior"), result.parameters());
+    }
+
+    static void rendersWhereBooleanComposition() {
+        QLSql.Result result = select("id")
+                .from("users")
+                .where(col("active").eq(true))
+                .or(col("role").eq("admin"))
+                .and(col("deleted").eq(false))
+                .sql();
+
+        assertEquals(
+                "SELECT id FROM users WHERE (((active = ?) OR (role = ?)) AND (deleted = ?))",
+                result.sql());
+        assertEquals(java.util.List.of(true, "admin", false), result.parameters());
     }
 
     static void rendersJsonRoundTrip() throws Exception {
