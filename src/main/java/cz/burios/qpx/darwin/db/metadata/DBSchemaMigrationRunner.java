@@ -64,8 +64,20 @@ public final class DBSchemaMigrationRunner {
         return applyApproval(connection, DBSchemaMigrationApproval.fromPlan(plan));
     }
 
+    /** Applies one previously approved plan with an explicit transaction mode. */
+    public SchemaDiff apply(Connection connection, DBSchemaMigrationPlan plan, boolean transactional) throws SQLException {
+        requireConnection(connection);
+        if (plan == null) throw new IllegalArgumentException("plan must not be null");
+        return applyApproval(connection, DBSchemaMigrationApproval.fromPlan(plan), transactional);
+    }
+
     /** Applies a standalone approval artifact without requiring desired metadata to be embedded in it. */
     public SchemaDiff applyApproval(Connection connection, DBSchemaMigrationApproval approval) throws SQLException {
+        return applyApproval(connection, approval, defaultTransactional());
+    }
+
+    /** Applies a standalone approval artifact with an explicit transaction mode. */
+    public SchemaDiff applyApproval(Connection connection, DBSchemaMigrationApproval approval, boolean transactional) throws SQLException {
         requireConnection(connection);
         if (approval == null) throw new IllegalArgumentException("approval must not be null");
         DBSchemaMigration migration = findMigration(migrations, approval.migrationId());
@@ -76,7 +88,7 @@ public final class DBSchemaMigrationRunner {
         validate(connection);
         SchemaMigrationHistory.Entry existing = history().find(connection, migration.id());
         if (existing != null) throw new SchemaMigrationException("Migration is no longer pending: " + migration.id() + " (status=" + existing.status() + ")");
-        return migrator.applyRecorded(connection, approval.diff(), migration.id(), approval.planHash(), true);
+        return migrator.applyRecorded(connection, approval.diff(), migration.id(), approval.planHash(), transactional);
     }
 
     /** Applies a previously approved JSON plan without rebuilding it from current metadata. */
@@ -84,24 +96,39 @@ public final class DBSchemaMigrationRunner {
         return applyApproval(connection, DBSchemaMigrationApproval.fromJson(json));
     }
 
+    /** Applies a previously approved JSON plan with an explicit transaction mode. */
+    public SchemaDiff applyJson(Connection connection, String json, boolean transactional) throws SQLException {
+        return applyApproval(connection, DBSchemaMigrationApproval.fromJson(json), transactional);
+    }
+
     /** Validates that persisted history represents a contiguous migration sequence. */
     public void validate(Connection connection) throws SQLException {
         requireConnection(connection); history().ensureTable(connection); validateEntries(history().list(connection), null);
     }
 
-    /** Applies every pending migration in declaration order; FAILED migrations are never retried implicitly. */
+    /** Applies every pending migration using the dialect's recommended transaction mode. */
     public List<SchemaDiff> migrate(Connection connection) throws SQLException {
+        return migrate(connection, defaultTransactional());
+    }
+
+    /** Applies every pending migration in declaration order with an explicit transaction mode. */
+    public List<SchemaDiff> migrate(Connection connection, boolean transactional) throws SQLException {
         requireConnection(connection); validate(connection); List<SchemaDiff> applied = new ArrayList<>();
         for (DBSchemaMigration migration : migrations) {
             SchemaMigrationHistory.Entry entry = history().find(connection, migration.id());
             if (entry != null && entry.status() == SchemaMigrationHistory.Status.APPLIED) continue;
-            applied.add(migrator.migrateRecorded(connection, migration.desired(), migration.id(), migration.includeDrops(), true));
+            applied.add(migrator.migrateRecorded(connection, migration.desired(), migration.id(), migration.includeDrops(), transactional));
         }
         return Collections.unmodifiableList(applied);
     }
 
     /** Explicitly retries one FAILED migration after validating its position in the declared sequence. */
     public SchemaDiff retry(Connection connection, String migrationId) throws SQLException {
+        return retry(connection, migrationId, defaultTransactional());
+    }
+
+    /** Explicitly retries one FAILED migration with an explicit transaction mode. */
+    public SchemaDiff retry(Connection connection, String migrationId, boolean transactional) throws SQLException {
         requireConnection(connection);
         DBSchemaMigration migration = findMigration(migrations, migrationId);
         if (migration == null) throw new SchemaMigrationException("Migration is not declared: " + migrationId);
@@ -113,10 +140,17 @@ public final class DBSchemaMigrationRunner {
         if (entry.status() != SchemaMigrationHistory.Status.FAILED) throw new SchemaMigrationException("Only FAILED migration can be retried: " + migrationId + " (status=" + entry.status() + ")");
         SchemaDiff current = migrator.plan(connection, migration.desired(), migration.includeDrops());
         if (!entry.planHash().equalsIgnoreCase(current.planHash())) throw new SchemaMigrationException("Migration plan hash changed: " + migrationId + " (stored=" + entry.planHash() + ", current=" + current.planHash() + ")");
-        return migrator.retryRecorded(connection, migration.desired(), migration.id(), migration.includeDrops(), true);
+        return migrator.retryRecorded(connection, migration.desired(), migration.id(), migration.includeDrops(), transactional);
     }
 
+    private boolean defaultTransactional() { return migrator.manager().dialect().supportsTransactionalDdl(); }
+
     private void validateEntries(List<SchemaMigrationHistory.Entry> entries, String retryId) throws SQLException {
+        Set<String> seen = new HashSet<>();
+        for (SchemaMigrationHistory.Entry entry : entries) {
+            if (entry == null || entry.migrationId() == null) throw new SchemaMigrationException("Migration history contains invalid entry");
+            if (!seen.add(normalizeId(entry.migrationId()))) throw new SchemaMigrationException("Migration history contains duplicate migration ID: " + entry.migrationId());
+        }
         boolean previousPending = false;
         for (DBSchemaMigration migration : migrations) {
             SchemaMigrationHistory.Entry entry = findEntry(entries, migration.id());
@@ -134,5 +168,5 @@ public final class DBSchemaMigrationRunner {
     private static SchemaMigrationHistory.Entry findEntry(List<SchemaMigrationHistory.Entry> entries, String id) { for (SchemaMigrationHistory.Entry entry : entries) if (entry.migrationId().equalsIgnoreCase(id)) return entry; return null; }
     private static DBSchemaMigration findMigration(List<DBSchemaMigration> migrations, String id) { if (id == null) return null; for (DBSchemaMigration migration : migrations) if (migration.id().equalsIgnoreCase(id)) return migration; return null; }
     private static String normalizeId(String id) { return id.toLowerCase(Locale.ROOT); }
-    private static void requireConnection(Connection connection) { if (connection == null) throw new IllegalArgumentException("connection must not be null"); }
+    private void requireConnection(Connection connection) { if (connection == null) throw new IllegalArgumentException("connection must not be null"); }
 }
