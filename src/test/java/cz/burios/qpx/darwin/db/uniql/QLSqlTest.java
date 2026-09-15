@@ -8,6 +8,7 @@ public class QLSqlTest {
         rendersJoinFunctionGroupHavingOrderAndLimit();
         rendersCaseExistsAndSubselect();
         rendersWhereBooleanComposition();
+        rendersInBetweenAndNullPredicates();
         rendersJsonRoundTrip();
         System.out.println("QLSqlTest: OK");
     }
@@ -78,6 +79,72 @@ public class QLSqlTest {
                 "SELECT id FROM users WHERE (((active = ?) OR (role = ?)) AND (deleted = ?))",
                 result.sql());
         assertEquals(java.util.List.of(true, "admin", false), result.parameters());
+    }
+
+    static void rendersInBetweenAndNullPredicates() {
+        QLSql.Result inValues = select("id")
+                .from("users")
+                .where(col("id").in(1, 2, 3))
+                .sql();
+        assertEquals("SELECT id FROM users WHERE (id IN (?, ?, ?))", inValues.sql());
+        assertEquals(java.util.List.of(1, 2, 3), inValues.parameters());
+
+        QLSql.Result notInValues = select("id")
+                .from("users")
+                .where(col("id").in(1, 2, 3).not())
+                .sql();
+        assertEquals("SELECT id FROM users WHERE (id NOT IN (?, ?, ?))", notInValues.sql());
+        assertEquals(java.util.List.of(1, 2, 3), notInValues.parameters());
+
+        QLSelect ids = select("id").from("blocked_users").build();
+        QLSql.Result inSelect = select("id")
+                .from("users")
+                .where(col("id").in(ids))
+                .sql();
+        assertEquals("SELECT id FROM users WHERE (id IN (SELECT id FROM blocked_users))", inSelect.sql());
+        assertEquals(java.util.List.of(), inSelect.parameters());
+
+        QLSql.Result notInSelect = select("id")
+                .from("users")
+                .where(col("id").in(subSelect(ids)).not())
+                .sql();
+        assertEquals("SELECT id FROM users WHERE (id NOT IN (SELECT id FROM blocked_users))", notInSelect.sql());
+        assertEquals(java.util.List.of(), notInSelect.parameters());
+
+        QLSql.Result between = select("id")
+                .from("users")
+                .where(col("age").between(18, 65))
+                .sql();
+        assertEquals("SELECT id FROM users WHERE (age BETWEEN ? AND ?)", between.sql());
+        assertEquals(java.util.List.of(18, 65), between.parameters());
+
+        QLSql.Result notBetween = select("id")
+                .from("users")
+                .where(col("age").between(18, 65).not())
+                .sql();
+        assertEquals("SELECT id FROM users WHERE (age NOT BETWEEN ? AND ?)", notBetween.sql());
+        assertEquals(java.util.List.of(18, 65), notBetween.parameters());
+
+        QLSql.Result nulls = select("id")
+                .from("users")
+                .where(col("deleted_at").isNull())
+                .sql();
+        assertEquals("SELECT id FROM users WHERE (deleted_at IS NULL)", nulls.sql());
+        assertEquals(java.util.List.of(), nulls.parameters());
+
+        QLSql.Result notNulls = select("id")
+                .from("users")
+                .where(col("deleted_at").isNotNull())
+                .sql();
+        assertEquals("SELECT id FROM users WHERE (deleted_at IS NOT NULL)", notNulls.sql());
+        assertEquals(java.util.List.of(), notNulls.parameters());
+
+        QLSql.Result notExpression = select("id")
+                .from("users")
+                .where(col("active").eq(true).not())
+                .sql();
+        assertEquals("SELECT id FROM users WHERE (NOT (active = ?))", notExpression.sql());
+        assertEquals(java.util.List.of(true), notExpression.parameters());
     }
 
     static void rendersJsonRoundTrip() throws Exception {
