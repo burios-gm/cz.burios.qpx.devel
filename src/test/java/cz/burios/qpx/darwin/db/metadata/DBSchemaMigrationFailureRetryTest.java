@@ -3,6 +3,7 @@ package cz.burios.qpx.darwin.db.metadata;
 import java.sql.Connection;
 import java.sql.DriverManager;
 
+import cz.burios.qpx.darwin.db.dialect.DBDialect;
 import cz.burios.qpx.darwin.db.dialect.H2Dialect;
 
 /** Executable regression test for RUNNING -> FAILED -> retry -> APPLIED migration flow. */
