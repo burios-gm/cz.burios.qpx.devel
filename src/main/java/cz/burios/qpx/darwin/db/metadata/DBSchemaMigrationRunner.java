@@ -146,8 +146,6 @@ public final class DBSchemaMigrationRunner {
         if (entry.status() != SchemaMigrationHistory.Status.FAILED) throw new SchemaMigrationException("Only FAILED migration can be retried: " + migrationId + " (status=" + entry.status() + ")");
         if (entry.definitionHash() == null || !entry.definitionHash().equalsIgnoreCase(migration.definitionHash()))
             throw new SchemaMigrationException("Migration definition changed after FAILED: " + migrationId);
-        SchemaDiff current = migrator.plan(connection, migration.desired(), migration.includeDrops());
-        if (!entry.planHash().equalsIgnoreCase(current.planHash())) throw new SchemaMigrationException("Migration plan hash changed: " + migrationId + " (stored=" + entry.planHash() + ", current=" + current.planHash() + ")");
         return migrator.retryRecorded(connection, migration.desired(), migration.id(), migration.includeDrops(), transactional, migration.definitionHash());
     }
 
