@@ -46,9 +46,33 @@ public final class SchemaMigrationHistoryTest {
             if (history.list(connection).size() != 2) throw new AssertionError("Expected two history entries");
         }
 
+        verifyHistoryUsesCurrentSchema();
         verifyConcurrentDuplicateIsRejected();
         verifyConcurrentEnsureTableIsSafe();
         System.out.println("SchemaMigrationHistoryTest: OK");
+    }
+
+    private static void verifyHistoryUsesCurrentSchema() throws Exception {
+        String url = "jdbc:h2:mem:migration_history_schema;DB_CLOSE_DELAY=-1;INIT=CREATE SCHEMA IF NOT EXISTS APP;SCHEMA=APP";
+        try (Connection connection = DriverManager.getConnection(url)) {
+            SchemaMigrationHistory history = new SchemaMigrationHistory();
+            history.ensureTable(connection);
+            if (history.list(connection).size() != 0)
+                throw new AssertionError("Fresh schema history must be empty");
+
+            try (var statement = connection.createStatement();
+                 var rs = statement.executeQuery(
+                         "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES "
+                       + "WHERE TABLE_SCHEMA = 'APP' AND TABLE_NAME = 'QPX_SCHEMA_MIGRATION'")) {
+                if (!rs.next() || rs.getInt(1) != 1)
+                    throw new AssertionError("Migration history table must be created in the current schema");
+            }
+
+            history.start(connection, "SCHEMA-CHECK",
+                    "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
+            if (history.find(connection, "SCHEMA-CHECK") == null)
+                throw new AssertionError("Qualified migration history table must be usable");
+        }
     }
 
     private static void verifyConcurrentDuplicateIsRejected() throws Exception {
