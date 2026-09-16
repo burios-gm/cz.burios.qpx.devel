@@ -10,6 +10,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
+import cz.burios.qpx.darwin.db.dialect.DBDialect;
+import cz.burios.qpx.darwin.db.dialect.DBDialects;
+
 /** Persistent execution history for metadata-driven schema migrations. */
 public final class SchemaMigrationHistory {
     public static final String TABLE_NAME = "QPX_SCHEMA_MIGRATION";
@@ -20,7 +23,10 @@ public final class SchemaMigrationHistory {
     public void ensureTable(Connection connection) throws SQLException {
         requireConnection(connection);
         DatabaseMetaData metadata = connection.getMetaData();
-        if (!tableExists(metadata, connection)) {
+        DBDialect dialect = DBDialects.forConnection(connection);
+        String catalog = dialect.catalog(connection);
+        String schema = dialect.schema(connection);
+        if (!tableExists(metadata, catalog, schema)) {
             String sql = "CREATE TABLE " + TABLE_NAME + " (MIGRATION_ID VARCHAR(128) PRIMARY KEY, PLAN_HASH VARCHAR(64) NOT NULL, DEFINITION_HASH VARCHAR(64) NULL, STATUS VARCHAR(16) NOT NULL, CREATED_AT BIGINT NOT NULL, COMPLETED_AT BIGINT NULL, ERROR_MESSAGE VARCHAR(4000) NULL)";
             try (PreparedStatement statement = connection.prepareStatement(sql)) {
                 try {
@@ -28,18 +34,18 @@ public final class SchemaMigrationHistory {
                 } catch (SQLException createFailure) {
                     // Another application instance may have created the history table after
                     // our existence check. Re-read metadata and only suppress that race.
-                    if (!tableExists(metadata, connection)) throw createFailure;
+                    if (!tableExists(metadata, catalog, schema)) throw createFailure;
                 }
             }
         }
-        if (!columnExists(metadata, connection, "DEFINITION_HASH")) {
+        if (!columnExists(metadata, catalog, schema, "DEFINITION_HASH")) {
             try (PreparedStatement statement = connection.prepareStatement(
                     "ALTER TABLE " + TABLE_NAME + " ADD COLUMN DEFINITION_HASH VARCHAR(64) NULL")) {
                 try {
                     statement.executeUpdate();
                 } catch (SQLException alterFailure) {
                     // Likewise, another initializer may have added the compatibility column.
-                    if (!columnExists(metadata, connection, "DEFINITION_HASH")) throw alterFailure;
+                    if (!columnExists(metadata, catalog, schema, "DEFINITION_HASH")) throw alterFailure;
                 }
             }
         }
@@ -150,15 +156,15 @@ public final class SchemaMigrationHistory {
         }
     }
 
-    private static boolean tableExists(DatabaseMetaData metadata, Connection connection) throws SQLException {
-        try (ResultSet rs = metadata.getTables(connection.getCatalog(), connection.getSchema(), null, new String[] { "TABLE" })) {
+    private static boolean tableExists(DatabaseMetaData metadata, String catalog, String schema) throws SQLException {
+        try (ResultSet rs = metadata.getTables(catalog, schema, null, new String[] { "TABLE" })) {
             while (rs.next()) if (TABLE_NAME.equalsIgnoreCase(rs.getString("TABLE_NAME"))) return true;
         }
         return false;
     }
 
-    private static boolean columnExists(DatabaseMetaData metadata, Connection connection, String columnName) throws SQLException {
-        try (ResultSet rs = metadata.getColumns(connection.getCatalog(), connection.getSchema(), TABLE_NAME, "%")) {
+    private static boolean columnExists(DatabaseMetaData metadata, String catalog, String schema, String columnName) throws SQLException {
+        try (ResultSet rs = metadata.getColumns(catalog, schema, TABLE_NAME, "%")) {
             while (rs.next()) if (columnName.equalsIgnoreCase(rs.getString("COLUMN_NAME"))) return true;
         }
         return false;
