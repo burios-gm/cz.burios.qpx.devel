@@ -67,9 +67,12 @@ public final class DBSchemaMigrationRunnerTest {
             DBSchemaMigrationRunner approver = new DBSchemaMigrationRunner(new H2Dialect(), migrations);
             DBSchemaMigrationApproval restored = DBSchemaMigrationApproval.fromJson(json);
             SchemaDiff approved = approver.applyApproval(applicationConnection, restored);
-            if (!approved.toJson().equals(restored.diff().toJson())) throw new AssertionError("Approval must apply the exact deserialized changes");
-            if (approver.history().find(applicationConnection, "V001").status() != SchemaMigrationHistory.Status.APPLIED)
+            SchemaMigrationHistory.Entry firstEntry = approver.history().find(applicationConnection, "V001");
+            if (firstEntry == null || firstEntry.status() != SchemaMigrationHistory.Status.APPLIED)
                 throw new AssertionError("Approved migration should be APPLIED");
+            if (!migrations.get(0).definitionHash().equalsIgnoreCase(firstEntry.definitionHash()))
+                throw new AssertionError("Applied migration must persist its definition hash");
+            if (!approved.toJson().equals(restored.diff().toJson())) throw new AssertionError("Approval must apply the exact deserialized changes");
             try (var tables = applicationConnection.getMetaData().getTables(null, null, "STORE", null)) {
                 if (!tables.next()) throw new AssertionError("Approved migration should create STORE table");
             }
@@ -77,18 +80,22 @@ public final class DBSchemaMigrationRunnerTest {
                 approver.applyJson(applicationConnection, json);
                 throw new AssertionError("An already applied approval must not be applied twice");
             } catch (SchemaMigrationException expected) { }
+
+            // V002 is still pending: a declaration mismatch must be rejected before execution.
+            DBSchemaMigrationApproval v2Approval = DBSchemaMigrationApproval.fromPlan(approver.planPending(applicationConnection).get(0));
+            DBSchemaMigrationApproval mismatchedDescription = new DBSchemaMigrationApproval(
+                    v2Approval.migrationId(), "wrong description", v2Approval.includeDrops(), v2Approval.planFormat(),
+                    v2Approval.diff(), v2Approval.planHash(), v2Approval.sourceHash());
+            try {
+                approver.applyApproval(applicationConnection, mismatchedDescription);
+                throw new AssertionError("Approval with mismatched migration description should be rejected");
+            } catch (SchemaMigrationException expected) { }
+
             if (approver.migrate(applicationConnection).size() != 1) throw new AssertionError("Expected remaining migration to be applied");
             if (!approver.pending(applicationConnection).isEmpty()) throw new AssertionError("Expected no pending migrations");
             if (!approver.planPending(applicationConnection).isEmpty()) throw new AssertionError("Expected no pending plans");
             if (approver.migrate(applicationConnection).size() != 0) throw new AssertionError("Migration run should be idempotent");
             if (approver.history().list(applicationConnection).size() != 2) throw new AssertionError("Expected two history entries");
-
-            try {
-                DBSchemaMigrationApproval mismatchedDescription = new DBSchemaMigrationApproval(
-                        "V002", "wrong description", false, restored.planFormat(), restored.diff(), restored.planHash(), restored.sourceHash());
-                approver.applyApproval(applicationConnection, mismatchedDescription);
-                throw new AssertionError("Approval with mismatched migration description should be rejected");
-            } catch (SchemaMigrationException expected) { }
         }
 
         try (Connection connection = DriverManager.getConnection("jdbc:h2:mem:migration_retry;DB_CLOSE_DELAY=-1")) {
