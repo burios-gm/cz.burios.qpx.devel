@@ -107,7 +107,7 @@ public final class DBSchemaMigrationRunnerTest {
             DBSchemaMigrationRunner runner = new DBSchemaMigrationRunner(new H2Dialect(), migration);
             SchemaDiff originalPlan = runner.migrator().plan(connection, original);
             runner.history().ensureTable(connection);
-            runner.history().start(connection, migration.id(), originalPlan.planHash());
+            runner.history().start(connection, migration.id(), originalPlan.planHash(), migration.definitionHash());
             runner.history().markFailed(connection, migration.id(), "simulated failure");
             try {
                 new DBSchemaMigrationRunner(new DBSchemaMigrator(new H2Dialect()),
