@@ -28,9 +28,13 @@ public final class SchemaMigrationHistoryTest {
                 throw new AssertionError("Expected APPLIED history entry");
 
             try {
-                history.start(connection, "V1", hash);
-                throw new AssertionError("Duplicate migration ID should fail");
+                history.start(connection, "v1", hash);
+                throw new AssertionError("Case-insensitive duplicate migration ID should fail");
             } catch (SchemaMigrationException expected) { }
+
+            SchemaMigrationHistory.Entry stored = history.find(connection, "v1");
+            if (!"v1".equalsIgnoreCase(stored.migrationId()))
+                throw new AssertionError("Migration lookup must remain case-insensitive: " + stored);
 
             history.start(connection, "V2", hash);
             history.markFailed(connection, "V2", "test failure");
