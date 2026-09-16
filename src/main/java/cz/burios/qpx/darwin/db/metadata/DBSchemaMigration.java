@@ -1,5 +1,13 @@
 package cz.burios.qpx.darwin.db.metadata;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.MapperFeature;
+
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.LinkedHashMap;
 import java.util.Objects;
 
 /** Immutable definition of one ordered, named database schema migration. */
@@ -26,6 +34,30 @@ public final class DBSchemaMigration {
     public String description() { return description; }
     public DBMetaData desired() { return desired; }
     public boolean includeDrops() { return includeDrops; }
+
+    /**
+     * Stable identity of the declared migration, independent of the current database state.
+     * This is deliberately different from SchemaDiff.planHash(), which hashes executable changes.
+     */
+    public String definitionHash() {
+        try {
+            ObjectMapper mapper = new ObjectMapper()
+                    .configure(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY, true)
+                    .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true);
+            LinkedHashMap<String, Object> value = new LinkedHashMap<>();
+            value.put("id", id);
+            value.put("description", description);
+            value.put("includeDrops", includeDrops);
+            value.put("desired", desired);
+            byte[] bytes = mapper.writeValueAsBytes(value);
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(bytes);
+            StringBuilder result = new StringBuilder(64);
+            for (byte b : digest) result.append(String.format("%02x", b));
+            return result.toString();
+        } catch (Exception e) {
+            throw new IllegalStateException("Unable to calculate migration definition hash", e);
+        }
+    }
 
     @Override
     public boolean equals(Object other) {
