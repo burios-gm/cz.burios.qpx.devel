@@ -62,23 +62,49 @@ public final class DBSchemaMigrator {
             throw new SchemaMigrationException("Migration ID already exists: " + migrationId + " (status=" + existing.status() + ", planHash=" + existing.planHash() + ")");
         }
         if (transactional) ensureTransactionalDdl();
-        return startAndApplyRecorded(connection, diff, migrationId, planHash, transactional);
+        return startAndApplyRecorded(connection, diff, migrationId, planHash, null, transactional);
+    }
+
+    /** Applies a recorded migration while also persisting the immutable declaration hash. */
+    public SchemaDiff migrateRecorded(Connection connection, DBMetaData desired, String migrationId,
+            boolean includeDrops, boolean transactional, String definitionHash) throws SQLException {
+        requireConnection(connection);
+        validateMigrationId(migrationId);
+        if (definitionHash == null || !definitionHash.matches("[0-9a-fA-F]{64}")) throw new IllegalArgumentException("definitionHash must be a SHA-256 hex string");
+        if (transactional && !connection.getAutoCommit()) throw new IllegalStateException("recorded transactional migration requires auto-commit to be enabled");
+        SchemaDiff diff = plan(connection, desired, includeDrops);
+        history.ensureTable(connection);
+        String planHash = diff.planHash();
+        SchemaMigrationHistory.Entry existing = history.find(connection, migrationId);
+        if (existing != null) {
+            if (existing.status() == SchemaMigrationHistory.Status.APPLIED && definitionHash.equalsIgnoreCase(existing.definitionHash())) return diff;
+            throw new SchemaMigrationException("Migration ID already exists: " + migrationId + " (status=" + existing.status() + ", planHash=" + existing.planHash() + ")");
+        }
+        if (transactional) ensureTransactionalDdl();
+        return startAndApplyRecorded(connection, diff, migrationId, planHash, definitionHash, transactional);
     }
 
     /** Applies an already-created migration plan without replanning it. */
     public SchemaDiff applyRecorded(Connection connection, SchemaDiff diff, String migrationId, String planHash,
             boolean transactional) throws SQLException {
+        return applyRecorded(connection, diff, migrationId, planHash, null, transactional);
+    }
+
+    /** Applies an already-created migration plan and persists its declared-definition hash. */
+    public SchemaDiff applyRecorded(Connection connection, SchemaDiff diff, String migrationId, String planHash,
+            String definitionHash, boolean transactional) throws SQLException {
         requireConnection(connection);
         validateMigrationId(migrationId);
         if (diff == null) throw new IllegalArgumentException("diff must not be null");
         if (planHash == null || !planHash.matches("[0-9a-fA-F]{64}")) throw new IllegalArgumentException("planHash must be a SHA-256 hex string");
+        if (definitionHash != null && !definitionHash.matches("[0-9a-fA-F]{64}")) throw new IllegalArgumentException("definitionHash must be a SHA-256 hex string");
         if (!planHash.equalsIgnoreCase(diff.planHash())) throw new SchemaMigrationException("Migration plan hash does not match supplied diff: " + migrationId);
         if (transactional && !connection.getAutoCommit()) throw new IllegalStateException("recorded transactional migration requires auto-commit to be enabled");
         history.ensureTable(connection);
         SchemaMigrationHistory.Entry existing = history.find(connection, migrationId);
         if (existing != null) throw new SchemaMigrationException("Migration ID already exists: " + migrationId + " (status=" + existing.status() + ", planHash=" + existing.planHash() + ")");
         if (transactional) ensureTransactionalDdl();
-        return startAndApplyRecorded(connection, diff, migrationId, planHash, transactional);
+        return startAndApplyRecorded(connection, diff, migrationId, planHash, definitionHash, transactional);
     }
 
     /** Explicitly retries a FAILED migration; the persisted plan hash must still match. */
@@ -99,8 +125,8 @@ public final class DBSchemaMigrator {
     }
 
     private SchemaDiff startAndApplyRecorded(Connection connection, SchemaDiff diff, String migrationId,
-            String planHash, boolean transactional) throws SQLException {
-        history.start(connection, migrationId, planHash);
+            String planHash, String definitionHash, boolean transactional) throws SQLException {
+        history.start(connection, migrationId, planHash, definitionHash);
         return applyRecordedChanges(connection, diff, migrationId, transactional);
     }
 
