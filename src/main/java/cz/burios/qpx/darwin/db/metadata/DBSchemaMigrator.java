@@ -52,7 +52,10 @@ public final class DBSchemaMigrator {
             boolean includeDrops, boolean transactional) throws SQLException {
         requireConnection(connection);
         validateMigrationId(migrationId);
-        if (transactional && !connection.getAutoCommit()) throw new IllegalStateException("recorded transactional migration requires auto-commit to be enabled");
+        if (transactional) {
+            ensureAutoCommit(connection, "recorded transactional migration requires auto-commit to be enabled");
+            ensureTransactionalDdl();
+        }
         SchemaDiff diff = plan(connection, desired, includeDrops);
         history.ensureTable(connection);
         String planHash = diff.planHash();
@@ -61,7 +64,6 @@ public final class DBSchemaMigrator {
             if (existing.status() == SchemaMigrationHistory.Status.APPLIED && existing.planHash().equalsIgnoreCase(planHash)) return diff;
             throw new SchemaMigrationException("Migration ID already exists: " + migrationId + " (status=" + existing.status() + ", planHash=" + existing.planHash() + ")");
         }
-        if (transactional) ensureTransactionalDdl();
         return startAndApplyRecorded(connection, diff, migrationId, planHash, null, transactional);
     }
 
@@ -71,7 +73,10 @@ public final class DBSchemaMigrator {
         requireConnection(connection);
         validateMigrationId(migrationId);
         if (definitionHash == null || !definitionHash.matches("[0-9a-fA-F]{64}")) throw new IllegalArgumentException("definitionHash must be a SHA-256 hex string");
-        if (transactional && !connection.getAutoCommit()) throw new IllegalStateException("recorded transactional migration requires auto-commit to be enabled");
+        if (transactional) {
+            ensureAutoCommit(connection, "recorded transactional migration requires auto-commit to be enabled");
+            ensureTransactionalDdl();
+        }
         SchemaDiff diff = plan(connection, desired, includeDrops);
         history.ensureTable(connection);
         String planHash = diff.planHash();
@@ -82,7 +87,6 @@ public final class DBSchemaMigrator {
                     && definitionHash.equalsIgnoreCase(existing.definitionHash())) return diff;
             throw new SchemaMigrationException("Migration ID already exists: " + migrationId + " (status=" + existing.status() + ", planHash=" + existing.planHash() + ")");
         }
-        if (transactional) ensureTransactionalDdl();
         return startAndApplyRecorded(connection, diff, migrationId, planHash, definitionHash, transactional);
     }
 
@@ -101,11 +105,13 @@ public final class DBSchemaMigrator {
         if (planHash == null || !planHash.matches("[0-9a-fA-F]{64}")) throw new IllegalArgumentException("planHash must be a SHA-256 hex string");
         if (definitionHash != null && !definitionHash.matches("[0-9a-fA-F]{64}")) throw new IllegalArgumentException("definitionHash must be a SHA-256 hex string");
         if (!planHash.equalsIgnoreCase(diff.planHash())) throw new SchemaMigrationException("Migration plan hash does not match supplied diff: " + migrationId);
-        if (transactional && !connection.getAutoCommit()) throw new IllegalStateException("recorded transactional migration requires auto-commit to be enabled");
+        if (transactional) {
+            ensureAutoCommit(connection, "recorded transactional migration requires auto-commit to be enabled");
+            ensureTransactionalDdl();
+        }
         history.ensureTable(connection);
         SchemaMigrationHistory.Entry existing = history.find(connection, migrationId);
         if (existing != null) throw new SchemaMigrationException("Migration ID already exists: " + migrationId + " (status=" + existing.status() + ", planHash=" + existing.planHash() + ")");
-        if (transactional) ensureTransactionalDdl();
         return startAndApplyRecorded(connection, diff, migrationId, planHash, definitionHash, transactional);
     }
 
@@ -125,10 +131,12 @@ public final class DBSchemaMigrator {
         requireConnection(connection);
         validateMigrationId(migrationId);
         if (definitionHash != null && !definitionHash.matches("[0-9a-fA-F]{64}")) throw new IllegalArgumentException("definitionHash must be a SHA-256 hex string");
-        if (transactional && !connection.getAutoCommit()) throw new IllegalStateException("recorded transactional migration requires auto-commit to be enabled");
+        if (transactional) {
+            ensureAutoCommit(connection, "recorded transactional migration requires auto-commit to be enabled");
+            ensureTransactionalDdl();
+        }
         SchemaDiff diff = plan(connection, desired, includeDrops);
         history.ensureTable(connection);
-        if (transactional) ensureTransactionalDdl();
         history.retry(connection, migrationId, diff.planHash(), definitionHash);
         return applyRecordedChanges(connection, diff, migrationId, transactional);
     }
@@ -160,6 +168,9 @@ public final class DBSchemaMigrator {
     private void ensureTransactionalDdl() throws SchemaMigrationException {
         if (!manager.dialect().supportsTransactionalDdl())
             throw new SchemaMigrationException("Transactional schema migration is not supported by dialect: " + manager.dialect().name());
+    }
+    private static void ensureAutoCommit(Connection connection, String message) throws SQLException {
+        if (!connection.getAutoCommit()) throw new IllegalStateException(message);
     }
     private void markFailed(Connection connection, String migrationId, Throwable failure) {
         try { history.markFailed(connection, migrationId, failure.toString()); }
