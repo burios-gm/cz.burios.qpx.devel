@@ -123,7 +123,7 @@ public final class DBSchemaMigrationRunner {
         for (DBSchemaMigration migration : migrations) {
             SchemaMigrationHistory.Entry entry = history().find(connection, migration.id());
             if (entry != null && entry.status() == SchemaMigrationHistory.Status.APPLIED) continue;
-            applied.add(migrator.migrateRecorded(connection, migration.desired(), migration.id(), migration.includeDrops(), transactional, migration.definitionHash()));
+            applied.add(migrator.migrateRecorded(connection, migration.desired(), migration.id(), migration.includeDrops(), transactional, migration.definitionHash());
         }
         return Collections.unmodifiableList(applied);
     }
@@ -144,6 +144,8 @@ public final class DBSchemaMigrationRunner {
         SchemaMigrationHistory.Entry entry = findEntry(entries, migrationId);
         if (entry == null) throw new SchemaMigrationException("Migration has no persisted FAILED entry: " + migrationId);
         if (entry.status() != SchemaMigrationHistory.Status.FAILED) throw new SchemaMigrationException("Only FAILED migration can be retried: " + migrationId + " (status=" + entry.status() + ")");
+        if (entry.definitionHash() == null || !entry.definitionHash().equalsIgnoreCase(migration.definitionHash()))
+            throw new SchemaMigrationException("Migration definition changed after FAILED: " + migrationId);
         SchemaDiff current = migrator.plan(connection, migration.desired(), migration.includeDrops());
         if (!entry.planHash().equalsIgnoreCase(current.planHash())) throw new SchemaMigrationException("Migration plan hash changed: " + migrationId + " (stored=" + entry.planHash() + ", current=" + current.planHash() + ")");
         return migrator.retryRecorded(connection, migration.desired(), migration.id(), migration.includeDrops(), transactional);
