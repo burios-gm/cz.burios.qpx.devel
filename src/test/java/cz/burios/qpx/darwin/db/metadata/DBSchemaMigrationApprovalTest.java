@@ -14,16 +14,17 @@ public final class DBSchemaMigrationApprovalTest {
                 .param("ENGINE", "InnoDB")
                 .addColumn(new ColumnMetaData("ID").longType().primaryKey(true));
         SchemaDiff diff = SchemaDiff.fromChanges(List.of(SchemaChange.createTable(table)));
-        // includeDrops defaults to false; using the 3-argument constructor keeps this test
-        // compatible with the original migration API as well.
         DBSchemaMigration migration = new DBSchemaMigration("2026-001", "Create STORE", new DBMetaData());
-        DBSchemaMigrationPlan plan = new DBSchemaMigrationPlan(migration, diff, diff.planHash());
+        String sourceHash = new DBMetaData().fingerprint();
+        DBSchemaMigrationPlan plan = new DBSchemaMigrationPlan(migration, diff, diff.planHash(), sourceHash);
 
         DBSchemaMigrationApproval approval = plan.approval();
         if (approval.planFormat() != SchemaDiff.PLAN_FORMAT)
             throw new AssertionError("Approval must preserve plan format");
         if (!approval.planHash().equals(plan.planHash()))
             throw new AssertionError("Approval must preserve plan hash");
+        if (!approval.sourceHash().equals(sourceHash))
+            throw new AssertionError("Approval must preserve source hash");
 
         String json = approval.toJson();
         DBSchemaMigrationApproval restored = DBSchemaMigrationApproval.fromJson(json);
@@ -41,6 +42,12 @@ public final class DBSchemaMigrationApprovalTest {
         expectRejected(() -> DBSchemaMigrationApproval.fromJson(modifiedHash.toString()),
                 "modified plan hash");
 
+        ObjectNode modifiedSourceHash = (ObjectNode) JSON.readTree(json);
+        modifiedSourceHash.put("sourceHash", "0000000000000000000000000000000000000000000000000000000000000000");
+        DBSchemaMigrationApproval sourceHashChanged = DBSchemaMigrationApproval.fromJson(modifiedSourceHash.toString());
+        if (sourceHashChanged.sourceHash().equals(approval.sourceHash()))
+            throw new AssertionError("Approval JSON must preserve the supplied source hash value");
+
         ObjectNode modifiedFormat = (ObjectNode) JSON.readTree(json);
         modifiedFormat.put("planFormat", SchemaDiff.PLAN_FORMAT + 1);
         expectRejected(() -> DBSchemaMigrationApproval.fromJson(modifiedFormat.toString()),
@@ -48,7 +55,7 @@ public final class DBSchemaMigrationApprovalTest {
 
         expectRejected(() -> new DBSchemaMigrationApproval(
                 approval.migrationId(), approval.description(), approval.includeDrops(),
-                approval.planFormat() + 1, approval.diff(), approval.planHash()),
+                approval.planFormat() + 1, approval.diff(), approval.planHash(), approval.sourceHash()),
                 "unknown plan format in constructor");
 
         System.out.println("DBSchemaMigrationApprovalTest: OK");
