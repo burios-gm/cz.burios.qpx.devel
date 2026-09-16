@@ -8,6 +8,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 
 /** Persistent execution history for metadata-driven schema migrations. */
 public final class SchemaMigrationHistory {
@@ -52,9 +53,10 @@ public final class SchemaMigrationHistory {
                     + " (status=" + existing.status() + ", planHash=" + existing.planHash() + ")");
         }
         java.time.Instant now = java.time.Instant.now();
+        String normalizedId = normalizeId(migrationId);
         String sql = "INSERT INTO " + TABLE_NAME + " (MIGRATION_ID, PLAN_HASH, DEFINITION_HASH, STATUS, CREATED_AT) VALUES (?, ?, ?, ?, ?)";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setString(1, migrationId); statement.setString(2, planHash);
+            statement.setString(1, normalizedId); statement.setString(2, planHash);
             if (definitionHash == null) statement.setNull(3, java.sql.Types.VARCHAR); else statement.setString(3, definitionHash);
             statement.setString(4, Status.RUNNING.name()); statement.setLong(5, now.toEpochMilli());
             statement.executeUpdate();
@@ -145,5 +147,6 @@ public final class SchemaMigrationHistory {
     private static void validateId(String id) { if (id == null || id.isBlank() || id.length() > 128) throw new IllegalArgumentException("migrationId must be 1..128 characters"); }
     private static void validateHash(String hash) { if (hash == null || !hash.matches("[0-9a-fA-F]{64}")) throw new IllegalArgumentException("planHash must be a SHA-256 hex string"); }
     private static void validateOptionalHash(String hash) { if (hash != null && !hash.matches("[0-9a-fA-F]{64}")) throw new IllegalArgumentException("definitionHash must be a SHA-256 hex string"); }
+    private static String normalizeId(String id) { return id.toLowerCase(Locale.ROOT); }
     private static void requireConnection(Connection connection) { if (connection == null) throw new IllegalArgumentException("connection must not be null"); }
 }
