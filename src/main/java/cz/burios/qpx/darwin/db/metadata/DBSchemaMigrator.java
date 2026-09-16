@@ -109,7 +109,7 @@ public final class DBSchemaMigrator {
         return startAndApplyRecorded(connection, diff, migrationId, planHash, definitionHash, transactional);
     }
 
-    /** Explicitly retries a FAILED migration; the persisted plan and declaration hashes must still match. */
+    /** Explicitly retries a FAILED migration against the currently pending schema diff. */
     public SchemaDiff retryRecorded(Connection connection, DBMetaData desired, String migrationId) throws SQLException {
         return retryRecorded(connection, desired, migrationId, false, true, null);
     }
