@@ -26,8 +26,9 @@ public final class SchemaMigrationHistory {
         DBDialect dialect = DBDialects.forConnection(connection);
         String catalog = dialect.catalog(connection);
         String schema = dialect.schema(connection);
+        String historyTable = dialect.tableName(catalog, schema, TABLE_NAME);
         if (!tableExists(metadata, catalog, schema)) {
-            String sql = "CREATE TABLE " + TABLE_NAME + " (MIGRATION_ID VARCHAR(128) PRIMARY KEY, PLAN_HASH VARCHAR(64) NOT NULL, DEFINITION_HASH VARCHAR(64) NULL, STATUS VARCHAR(16) NOT NULL, CREATED_AT BIGINT NOT NULL, COMPLETED_AT BIGINT NULL, ERROR_MESSAGE VARCHAR(4000) NULL)";
+            String sql = "CREATE TABLE " + historyTable + " (MIGRATION_ID VARCHAR(128) PRIMARY KEY, PLAN_HASH VARCHAR(64) NOT NULL, DEFINITION_HASH VARCHAR(64) NULL, STATUS VARCHAR(16) NOT NULL, CREATED_AT BIGINT NOT NULL, COMPLETED_AT BIGINT NULL, ERROR_MESSAGE VARCHAR(4000) NULL)";
             try (PreparedStatement statement = connection.prepareStatement(sql)) {
                 try {
                     statement.executeUpdate();
@@ -40,7 +41,7 @@ public final class SchemaMigrationHistory {
         }
         if (!columnExists(metadata, catalog, schema, "DEFINITION_HASH")) {
             try (PreparedStatement statement = connection.prepareStatement(
-                    "ALTER TABLE " + TABLE_NAME + " ADD COLUMN DEFINITION_HASH VARCHAR(64) NULL")) {
+                    "ALTER TABLE " + historyTable + " ADD COLUMN DEFINITION_HASH VARCHAR(64) NULL")) {
                 try {
                     statement.executeUpdate();
                 } catch (SQLException alterFailure) {
@@ -66,7 +67,7 @@ public final class SchemaMigrationHistory {
         }
         java.time.Instant now = java.time.Instant.now();
         String normalizedId = normalizeId(migrationId);
-        String sql = "INSERT INTO " + TABLE_NAME + " (MIGRATION_ID, PLAN_HASH, DEFINITION_HASH, STATUS, CREATED_AT) VALUES (?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO " + historyTableName(connection) + " (MIGRATION_ID, PLAN_HASH, DEFINITION_HASH, STATUS, CREATED_AT) VALUES (?, ?, ?, ?, ?)";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, normalizedId); statement.setString(2, planHash);
             if (definitionHash == null) statement.setNull(3, java.sql.Types.VARCHAR); else statement.setString(3, definitionHash);
@@ -117,7 +118,7 @@ public final class SchemaMigrationHistory {
 
     public Entry find(Connection connection, String migrationId) throws SQLException {
         validateId(migrationId);
-        String sql = "SELECT MIGRATION_ID, PLAN_HASH, DEFINITION_HASH, STATUS, CREATED_AT, COMPLETED_AT, ERROR_MESSAGE FROM " + TABLE_NAME + " WHERE LOWER(MIGRATION_ID) = LOWER(?)";
+        String sql = "SELECT MIGRATION_ID, PLAN_HASH, DEFINITION_HASH, STATUS, CREATED_AT, COMPLETED_AT, ERROR_MESSAGE FROM " + historyTableName(connection) + " WHERE LOWER(MIGRATION_ID) = LOWER(?)";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, migrationId);
             try (ResultSet rs = statement.executeQuery()) { return rs.next() ? read(rs) : null; }
@@ -125,7 +126,7 @@ public final class SchemaMigrationHistory {
     }
 
     public List<Entry> list(Connection connection) throws SQLException {
-        String sql = "SELECT MIGRATION_ID, PLAN_HASH, DEFINITION_HASH, STATUS, CREATED_AT, COMPLETED_AT, ERROR_MESSAGE FROM " + TABLE_NAME + " ORDER BY CREATED_AT, MIGRATION_ID";
+        String sql = "SELECT MIGRATION_ID, PLAN_HASH, DEFINITION_HASH, STATUS, CREATED_AT, COMPLETED_AT, ERROR_MESSAGE FROM " + historyTableName(connection) + " ORDER BY CREATED_AT, MIGRATION_ID";
         List<Entry> result = new ArrayList<>();
         try (PreparedStatement statement = connection.prepareStatement(sql); ResultSet rs = statement.executeQuery()) {
             while (rs.next()) result.add(read(rs));
@@ -135,7 +136,7 @@ public final class SchemaMigrationHistory {
 
     private static void updateRetry(Connection connection, String migrationId, String planHash) throws SQLException {
         requireConnection(connection);
-        String sql = "UPDATE " + TABLE_NAME + " SET PLAN_HASH = ?, STATUS = ?, COMPLETED_AT = NULL, ERROR_MESSAGE = NULL WHERE LOWER(MIGRATION_ID) = LOWER(?)";
+        String sql = "UPDATE " + historyTableName(connection) + " SET PLAN_HASH = ?, STATUS = ?, COMPLETED_AT = NULL, ERROR_MESSAGE = NULL WHERE LOWER(MIGRATION_ID) = LOWER(?)";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, planHash);
             statement.setString(2, Status.RUNNING.name());
@@ -146,7 +147,7 @@ public final class SchemaMigrationHistory {
 
     private static void updateStatus(Connection connection, String migrationId, Status status, java.time.Instant completedAt, String errorMessage) throws SQLException {
         requireConnection(connection);
-        String sql = "UPDATE " + TABLE_NAME + " SET STATUS = ?, COMPLETED_AT = ?, ERROR_MESSAGE = ? WHERE LOWER(MIGRATION_ID) = LOWER(?)";
+        String sql = "UPDATE " + historyTableName(connection) + " SET STATUS = ?, COMPLETED_AT = ?, ERROR_MESSAGE = ? WHERE LOWER(MIGRATION_ID) = LOWER(?)";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, status.name());
             if (completedAt == null) statement.setNull(2, java.sql.Types.BIGINT); else statement.setLong(2, completedAt.toEpochMilli());
@@ -154,6 +155,11 @@ public final class SchemaMigrationHistory {
             statement.setString(4, migrationId);
             if (statement.executeUpdate() != 1) throw new SQLException("Migration history entry not found: " + migrationId);
         }
+    }
+
+    private static String historyTableName(Connection connection) throws SQLException {
+        DBDialect dialect = DBDialects.forConnection(connection);
+        return dialect.tableName(dialect.catalog(connection), dialect.schema(connection), TABLE_NAME);
     }
 
     private static boolean tableExists(DatabaseMetaData metadata, String catalog, String schema) throws SQLException {
