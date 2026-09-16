@@ -148,7 +148,7 @@ public final class DBSchemaMigrationRunner {
             throw new SchemaMigrationException("Migration definition changed after FAILED: " + migrationId);
         SchemaDiff current = migrator.plan(connection, migration.desired(), migration.includeDrops());
         if (!entry.planHash().equalsIgnoreCase(current.planHash())) throw new SchemaMigrationException("Migration plan hash changed: " + migrationId + " (stored=" + entry.planHash() + ", current=" + current.planHash() + ")");
-        return migrator.retryRecorded(connection, migration.desired(), migration.id(), migration.includeDrops(), transactional);
+        return migrator.retryRecorded(connection, migration.desired(), migration.id(), migration.includeDrops(), transactional, migration.definitionHash());
     }
 
     private boolean defaultTransactional() { return migrator.manager().dialect().supportsTransactionalDdl(); }
