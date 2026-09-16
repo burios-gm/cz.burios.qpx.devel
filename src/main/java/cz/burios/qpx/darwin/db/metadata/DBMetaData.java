@@ -1,5 +1,8 @@
 package cz.burios.qpx.darwin.db.metadata;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
@@ -13,11 +16,20 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.MapperFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+
 import cz.burios.qpx.darwin.db.dialect.DBDialect;
 import cz.burios.qpx.darwin.db.dialect.DBDialects;
 
 /** Database metadata cache containing JDBC catalog/schema and discovered tables. */
 public class DBMetaData {
+    private static final ObjectMapper CANONICAL_JSON = new ObjectMapper()
+            .configure(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY, true)
+            .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true);
+
     public String catalog;
     public String schema;
     public String databaseName;
@@ -31,6 +43,19 @@ public class DBMetaData {
     public DBMetaData add(TableMetaData table) { if (table == null || table.name == null || table.name.isBlank()) throw new IllegalArgumentException("table is required"); tables.put(key(table), table); return this; }
     public DBMetaData remove(String name) { if (name == null) return this; String normalized = name.toLowerCase(Locale.ROOT); if (tables.remove(normalized) != null) return this; String found = null; for (Map.Entry<String, TableMetaData> entry : tables.entrySet()) if (key(entry.getValue()).equals(normalized)) { found = entry.getKey(); break; } if (found != null) tables.remove(found); return this; }
     private static String key(TableMetaData table) { StringBuilder key = new StringBuilder(); if (table.database != null && !table.database.isBlank()) key.append(table.database).append('.'); if (table.schema != null && !table.schema.isBlank()) key.append(table.schema).append('.'); key.append(table.name); return key.toString().toLowerCase(Locale.ROOT); }
+
+    /** Returns a deterministic SHA-256 fingerprint of this metadata snapshot. */
+    public String fingerprint() {
+        try {
+            byte[] bytes = CANONICAL_JSON.writeValueAsBytes(this);
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(bytes);
+            StringBuilder result = new StringBuilder(64);
+            for (byte value : digest) result.append(String.format(Locale.ROOT, "%02x", value & 0xff));
+            return result.toString();
+        } catch (JsonProcessingException | NoSuchAlgorithmException e) {
+            throw new IllegalStateException("Unable to calculate database metadata fingerprint", e);
+        }
+    }
 
     public static DBMetaData load(Connection connection) throws SQLException {
         if (connection == null) throw new IllegalArgumentException("connection must not be null");
