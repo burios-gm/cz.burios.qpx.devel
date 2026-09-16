@@ -47,13 +47,14 @@ public final class DBSchemaMigrationRunner {
     public List<DBSchemaMigrationPlan> planPending(Connection connection) throws SQLException {
         requireConnection(connection);
         validate(connection);
+        DBMetaData source = DBMetaData.load(connection);
         List<DBSchemaMigrationPlan> result = new ArrayList<>();
         List<SchemaMigrationHistory.Entry> entries = history().list(connection);
         for (DBSchemaMigration migration : migrations) {
             SchemaMigrationHistory.Entry entry = findEntry(entries, migration.id());
             if (entry != null && entry.status() == SchemaMigrationHistory.Status.APPLIED) continue;
-            SchemaDiff diff = migrator.plan(connection, migration.desired(), migration.includeDrops());
-            result.add(new DBSchemaMigrationPlan(migration, diff, diff.planHash()));
+            SchemaDiff diff = SchemaDiff.compare(source, migration.desired(), migration.includeDrops());
+            result.add(DBSchemaMigrationPlan.from(migration, diff, source.fingerprint()));
         }
         return Collections.unmodifiableList(result);
     }
@@ -89,6 +90,10 @@ public final class DBSchemaMigrationRunner {
         validate(connection);
         SchemaMigrationHistory.Entry existing = history().find(connection, migration.id());
         if (existing != null) throw new SchemaMigrationException("Migration is no longer pending: " + migration.id() + " (status=" + existing.status() + ")");
+        String currentSourceHash = DBMetaData.load(connection).fingerprint();
+        if (!approval.sourceHash().equalsIgnoreCase(currentSourceHash))
+            throw new SchemaMigrationException("Migration approval source metadata has changed: " + migration.id()
+                    + " (approved=" + approval.sourceHash() + ", current=" + currentSourceHash + ")");
         return migrator.applyRecorded(connection, approval.diff(), migration.id(), approval.planHash(), migration.definitionHash(), transactional);
     }
 
