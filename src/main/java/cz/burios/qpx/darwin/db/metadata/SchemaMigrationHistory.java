@@ -62,12 +62,12 @@ public final class SchemaMigrationHistory {
         return new Entry(migrationId, planHash, definitionHash, Status.RUNNING, now, null, null);
     }
 
-    /** Reopens a FAILED migration only when its original plan and declaration hashes are unchanged. */
+    /** Reopens a FAILED migration using the currently pending plan and unchanged declaration hash. */
     public Entry retry(Connection connection, String migrationId, String planHash) throws SQLException {
         return retry(connection, migrationId, planHash, null);
     }
 
-    /** Reopens a FAILED migration only when its original plan and, when supplied, declaration hashes are unchanged. */
+    /** Reopens a FAILED migration and replaces the persisted plan hash with the currently pending plan. */
     public Entry retry(Connection connection, String migrationId, String planHash, String definitionHash) throws SQLException {
         validateId(migrationId); validateHash(planHash); validateOptionalHash(definitionHash);
         Entry existing = find(connection, migrationId);
@@ -76,16 +76,12 @@ public final class SchemaMigrationHistory {
             throw new SchemaMigrationException("Only FAILED migration can be retried: " + migrationId
                     + " (status=" + existing.status() + ")");
         }
-        if (!existing.planHash().equalsIgnoreCase(planHash)) {
-            throw new SchemaMigrationException("Migration plan hash changed: " + migrationId
-                    + " (stored=" + existing.planHash() + ", current=" + planHash + ")");
-        }
         if (definitionHash != null && !definitionHash.equalsIgnoreCase(existing.definitionHash())) {
             throw new SchemaMigrationException("Migration definition hash changed: " + migrationId
                     + " (stored=" + existing.definitionHash() + ", current=" + definitionHash + ")");
         }
-        updateStatus(connection, migrationId, Status.RUNNING, null, null);
-        return new Entry(existing.migrationId(), existing.planHash(), existing.definitionHash(), Status.RUNNING,
+        updateRetry(connection, migrationId, planHash);
+        return new Entry(existing.migrationId(), planHash, existing.definitionHash(), Status.RUNNING,
                 existing.createdAt(), null, null);
     }
 
@@ -114,6 +110,17 @@ public final class SchemaMigrationHistory {
             while (rs.next()) result.add(read(rs));
         }
         return Collections.unmodifiableList(result);
+    }
+
+    private static void updateRetry(Connection connection, String migrationId, String planHash) throws SQLException {
+        requireConnection(connection);
+        String sql = "UPDATE " + TABLE_NAME + " SET PLAN_HASH = ?, STATUS = ?, COMPLETED_AT = NULL, ERROR_MESSAGE = NULL WHERE LOWER(MIGRATION_ID) = LOWER(?)";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, planHash);
+            statement.setString(2, Status.RUNNING.name());
+            statement.setString(3, migrationId);
+            if (statement.executeUpdate() != 1) throw new SQLException("Migration history entry not found: " + migrationId);
+        }
     }
 
     private static void updateStatus(Connection connection, String migrationId, Status status, java.time.Instant completedAt, String errorMessage) throws SQLException {
