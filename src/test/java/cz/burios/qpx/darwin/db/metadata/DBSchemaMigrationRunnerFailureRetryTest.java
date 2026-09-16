@@ -2,6 +2,7 @@ package cz.burios.qpx.darwin.db.metadata;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.util.List;
 
 import cz.burios.qpx.darwin.db.dialect.DBDialect;
 import cz.burios.qpx.darwin.db.dialect.H2Dialect;
@@ -61,7 +62,7 @@ public final class DBSchemaMigrationRunnerFailureRetryTest {
 
             // A retry must use the same declaration but may rebuild its current executable plan.
             DBSchemaMigrationRunner retryRunner = new DBSchemaMigrationRunner(
-                    new DBSchemaMigrator(new H2Dialect()), migration);
+                    new DBSchemaMigrator(new H2Dialect()), List.of(migration));
             SchemaDiff retried = retryRunner.retry(connection, migration.id(), true);
             if (retried.size() != 2)
                 throw new AssertionError("Retry after transactional rollback must contain both changes");
