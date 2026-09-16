@@ -1,5 +1,7 @@
 package cz.burios.qpx.darwin.db.metadata;
 
+import java.util.Objects;
+
 /** Immutable definition of one ordered, named database schema migration. */
 public final class DBSchemaMigration {
     private final String id;
@@ -24,6 +26,21 @@ public final class DBSchemaMigration {
     public String description() { return description; }
     public DBMetaData desired() { return desired; }
     public boolean includeDrops() { return includeDrops; }
+
+    @Override
+    public boolean equals(Object other) {
+        if (this == other) return true;
+        if (!(other instanceof DBSchemaMigration that)) return false;
+        return includeDrops == that.includeDrops
+                && id.equals(that.id)
+                && description.equals(that.description)
+                && Objects.equals(desired, that.desired);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, description, desired, includeDrops);
+    }
 
     @Override
     public String toString() {
