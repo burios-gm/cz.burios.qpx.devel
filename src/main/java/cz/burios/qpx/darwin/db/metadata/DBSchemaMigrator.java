@@ -77,7 +77,9 @@ public final class DBSchemaMigrator {
         String planHash = diff.planHash();
         SchemaMigrationHistory.Entry existing = history.find(connection, migrationId);
         if (existing != null) {
-            if (existing.status() == SchemaMigrationHistory.Status.APPLIED && definitionHash.equalsIgnoreCase(existing.definitionHash())) return diff;
+            if (existing.status() == SchemaMigrationHistory.Status.APPLIED
+                    && existing.planHash().equalsIgnoreCase(planHash)
+                    && definitionHash.equalsIgnoreCase(existing.definitionHash())) return diff;
             throw new SchemaMigrationException("Migration ID already exists: " + migrationId + " (status=" + existing.status() + ", planHash=" + existing.planHash() + ")");
         }
         if (transactional) ensureTransactionalDdl();
