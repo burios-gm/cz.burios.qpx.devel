@@ -9,9 +9,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-/** Immutable approval artifact containing migration identity and executable schema changes. */
+/** Immutable approval artifact containing migration identity, source state and executable schema changes. */
 public record DBSchemaMigrationApproval(String migrationId, String description, boolean includeDrops,
-        int planFormat, SchemaDiff diff, String planHash) {
+        int planFormat, SchemaDiff diff, String planHash, String sourceHash) {
     public DBSchemaMigrationApproval {
         if (migrationId == null || migrationId.isBlank() || migrationId.length() > 128)
             throw new IllegalArgumentException("migrationId must be 1..128 characters");
@@ -22,18 +22,20 @@ public record DBSchemaMigrationApproval(String migrationId, String description, 
             throw new IllegalArgumentException("planHash must be a SHA-256 hex string");
         if (!planHash.equalsIgnoreCase(diff.planHash()))
             throw new IllegalArgumentException("planHash does not match diff");
+        if (sourceHash == null || !sourceHash.matches("[0-9a-fA-F]{64}"))
+            throw new IllegalArgumentException("sourceHash must be a SHA-256 hex string");
         description = description == null ? "" : description;
     }
 
     public DBSchemaMigrationApproval(String migrationId, String description, boolean includeDrops,
-            SchemaDiff diff, String planHash) {
-        this(migrationId, description, includeDrops, SchemaDiff.PLAN_FORMAT, diff, planHash);
+            SchemaDiff diff, String planHash, String sourceHash) {
+        this(migrationId, description, includeDrops, SchemaDiff.PLAN_FORMAT, diff, planHash, sourceHash);
     }
 
     public static DBSchemaMigrationApproval fromPlan(DBSchemaMigrationPlan plan) {
         if (plan == null) throw new IllegalArgumentException("plan must not be null");
         return new DBSchemaMigrationApproval(plan.migration().id(), plan.migration().description(),
-                plan.migration().includeDrops(), plan.planFormat(), plan.diff(), plan.planHash());
+                plan.migration().includeDrops(), plan.planFormat(), plan.diff(), plan.planHash(), plan.sourceHash());
     }
 
     public String toJson() {
@@ -43,6 +45,7 @@ public record DBSchemaMigrationApproval(String migrationId, String description, 
         json.put("includeDrops", includeDrops);
         json.put("planFormat", planFormat);
         json.put("planHash", planHash);
+        json.put("sourceHash", sourceHash);
         json.put("changes", diff.changes());
         try { return new ObjectMapper().writeValueAsString(json); }
         catch (JsonProcessingException e) { throw new IllegalStateException("Cannot serialize schema migration approval", e); }
@@ -56,21 +59,20 @@ public record DBSchemaMigrationApproval(String migrationId, String description, 
             String migrationId = text(root, "migrationId", true);
             String description = text(root, "description", true);
             JsonNode includeDropsNode = root.get("includeDrops");
-            if (includeDropsNode == null || !includeDropsNode.isBoolean())
-                throw new IllegalArgumentException("includeDrops must be a boolean");
+            if (includeDropsNode == null || !includeDropsNode.isBoolean()) throw new IllegalArgumentException("includeDrops must be a boolean");
             boolean includeDrops = includeDropsNode.booleanValue();
             JsonNode planFormatNode = root.get("planFormat");
-            if (planFormatNode == null || !planFormatNode.isIntegralNumber())
-                throw new IllegalArgumentException("planFormat must be an integer");
+            if (planFormatNode == null || !planFormatNode.isIntegralNumber()) throw new IllegalArgumentException("planFormat must be an integer");
             int planFormat = planFormatNode.intValue();
-            if (planFormat != SchemaDiff.PLAN_FORMAT)
-                throw new IllegalArgumentException("Unsupported schema migration plan format: " + planFormat);
+            if (planFormat != SchemaDiff.PLAN_FORMAT) throw new IllegalArgumentException("Unsupported schema migration plan format: " + planFormat);
             String planHash = text(root, "planHash", true);
+            String sourceHash = text(root, "sourceHash", true);
             JsonNode changesNode = root.get("changes");
             if (changesNode == null || !changesNode.isArray()) throw new IllegalArgumentException("changes must be an array");
             List<SchemaChange> changes = new ArrayList<>();
             for (JsonNode node : changesNode) changes.add(readChange(node));
-            return new DBSchemaMigrationApproval(migrationId, description, includeDrops, planFormat, SchemaDiff.fromChanges(changes), planHash);
+            return new DBSchemaMigrationApproval(migrationId, description, includeDrops, planFormat,
+                    SchemaDiff.fromChanges(changes), planHash, sourceHash);
         } catch (JsonProcessingException e) { throw new IllegalArgumentException("Invalid schema migration approval JSON", e); }
     }
 
@@ -142,9 +144,7 @@ public record DBSchemaMigrationApproval(String migrationId, String description, 
         if (node.isBoolean()) return node.booleanValue(); if (node.isIntegralNumber()) return node.numberValue();
         if (node.isFloatingPointNumber()) return node.numberValue(); if (node.isTextual()) return node.textValue(); return node.toString();
     }
-    private static JsonNode requireNode(JsonNode node, String field, SchemaChange.Type type) {
-        JsonNode result = node.get(field); if (result == null || result.isNull()) throw new IllegalArgumentException(type + " " + field + " is required"); return result;
-    }
+    private static JsonNode requireNode(JsonNode node, String field, SchemaChange.Type type) { JsonNode result = node.get(field); if (result == null || result.isNull()) throw new IllegalArgumentException(type + " " + field + " is required"); return result; }
     private static TableMetaData requireTable(TableMetaData table, SchemaChange.Type type) { if (table == null) throw new IllegalArgumentException(type + " table is required"); return table; }
     private static void requireObject(JsonNode node, String what) { if (node == null || !node.isObject()) throw new IllegalArgumentException(what + " must be an object"); }
     private static String text(JsonNode node, String field, boolean required) { String value = nullableText(node, field); if (required && (value == null || value.isBlank())) throw new IllegalArgumentException(field + " must not be blank"); return value == null ? "" : value; }
