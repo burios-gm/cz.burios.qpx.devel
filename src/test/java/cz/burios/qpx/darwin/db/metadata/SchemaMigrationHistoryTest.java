@@ -47,6 +47,7 @@ public final class SchemaMigrationHistoryTest {
         }
 
         verifyConcurrentDuplicateIsRejected();
+        verifyConcurrentEnsureTableIsSafe();
         System.out.println("SchemaMigrationHistoryTest: OK");
     }
 
@@ -85,6 +86,59 @@ public final class SchemaMigrationHistoryTest {
                         + successes + ", duplicates=" + duplicates);
             if (new SchemaMigrationHistory().list(first).size() != 1)
                 throw new AssertionError("Concurrent starts must leave exactly one history row");
+        }
+    }
+
+    private static void verifyConcurrentEnsureTableIsSafe() throws Exception {
+        String url = "jdbc:h2:mem:migration_history_bootstrap;DB_CLOSE_DELAY=-1;LOCK_TIMEOUT=10000";
+        try (Connection first = DriverManager.getConnection(url);
+             Connection second = DriverManager.getConnection(url)) {
+            SchemaMigrationHistory firstHistory = new SchemaMigrationHistory();
+            SchemaMigrationHistory secondHistory = new SchemaMigrationHistory();
+            CountDownLatch ready = new CountDownLatch(2);
+            CountDownLatch go = new CountDownLatch(1);
+            Throwable[] failures = new Throwable[2];
+
+            Thread firstThread = new Thread(() -> runConcurrentEnsureTable(firstHistory, first, ready, go, failures, 0),
+                    "migration-history-bootstrap-first");
+            Thread secondThread = new Thread(() -> runConcurrentEnsureTable(secondHistory, second, ready, go, failures, 1),
+                    "migration-history-bootstrap-second");
+            firstThread.start();
+            secondThread.start();
+            ready.await();
+            go.countDown();
+            firstThread.join(10000);
+            secondThread.join(10000);
+
+            if (firstThread.isAlive() || secondThread.isAlive())
+                throw new AssertionError("Concurrent ensureTable calls did not finish");
+            if (failures[0] != null) throw new AssertionError("First concurrent ensureTable failed", failures[0]);
+            if (failures[1] != null) throw new AssertionError("Second concurrent ensureTable failed", failures[1]);
+
+            try (Connection verify = DriverManager.getConnection(url)) {
+                SchemaMigrationHistory history = new SchemaMigrationHistory();
+                history.ensureTable(verify);
+                if (!history.list(verify).isEmpty())
+                    throw new AssertionError("Fresh concurrent history bootstrap must not create migration rows");
+                history.start(verify, "BOOTSTRAP-CHECK",
+                        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
+                SchemaMigrationHistory.Entry entry = history.find(verify, "BOOTSTRAP-CHECK");
+                if (entry == null || entry.status() != SchemaMigrationHistory.Status.RUNNING)
+                    throw new AssertionError("History table is not usable after concurrent bootstrap");
+                if (entry.definitionHash() != null)
+                    throw new AssertionError("Legacy start() should leave definition hash null");
+            }
+        }
+    }
+
+    private static void runConcurrentEnsureTable(SchemaMigrationHistory history, Connection connection,
+            CountDownLatch ready, CountDownLatch go, Throwable[] failures, int failureIndex) {
+        try {
+            ready.countDown();
+            go.await();
+            history.ensureTable(connection);
+        } catch (Throwable failure) {
+            failures[failureIndex] = failure;
         }
     }
 
