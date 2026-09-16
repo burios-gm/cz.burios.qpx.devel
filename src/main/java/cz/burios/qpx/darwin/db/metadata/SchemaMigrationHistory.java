@@ -49,8 +49,7 @@ public final class SchemaMigrationHistory {
         if (existing != null) {
             if (existing.status() == Status.APPLIED && existing.planHash().equalsIgnoreCase(planHash)
                     && (definitionHash == null || definitionHash.equalsIgnoreCase(existing.definitionHash()))) return existing;
-            throw new SchemaMigrationException("Migration ID already exists: " + migrationId
-                    + " (status=" + existing.status() + ", planHash=" + existing.planHash() + ")");
+            throw duplicateMigration(migrationId, existing);
         }
         java.time.Instant now = java.time.Instant.now();
         String normalizedId = normalizeId(migrationId);
@@ -60,6 +59,13 @@ public final class SchemaMigrationHistory {
             if (definitionHash == null) statement.setNull(3, java.sql.Types.VARCHAR); else statement.setString(3, definitionHash);
             statement.setString(4, Status.RUNNING.name()); statement.setLong(5, now.toEpochMilli());
             statement.executeUpdate();
+        } catch (SQLException insertFailure) {
+            // The existence check above is intentionally only an optimization. The primary key
+            // is the concurrency guard: another connection may have inserted the same normalized ID
+            // between find() and INSERT. Turn that race into the same domain-level error.
+            Entry concurrent = find(connection, migrationId);
+            if (concurrent != null) throw duplicateMigration(migrationId, concurrent);
+            throw insertFailure;
         }
         return new Entry(migrationId, planHash, definitionHash, Status.RUNNING, now, null, null);
     }
@@ -142,6 +148,10 @@ public final class SchemaMigrationHistory {
         java.time.Instant completed = rs.wasNull() ? null : java.time.Instant.ofEpochMilli(completedValue);
         return new Entry(rs.getString("MIGRATION_ID"), rs.getString("PLAN_HASH"), rs.getString("DEFINITION_HASH"),
                 Status.valueOf(rs.getString("STATUS")), java.time.Instant.ofEpochMilli(created), completed, rs.getString("ERROR_MESSAGE"));
+    }
+    private static SchemaMigrationException duplicateMigration(String migrationId, Entry existing) {
+        return new SchemaMigrationException("Migration ID already exists: " + migrationId
+                + " (status=" + existing.status() + ", planHash=" + existing.planHash() + ")");
     }
     private static String truncate(String message) { return message == null || message.length() <= 4000 ? message : message.substring(0, 4000); }
     private static void validateId(String id) { if (id == null || id.isBlank() || id.length() > 128) throw new IllegalArgumentException("migrationId must be 1..128 characters"); }
