@@ -20,21 +20,28 @@ public final class SchemaMigrationHistory {
     public void ensureTable(Connection connection) throws SQLException {
         requireConnection(connection);
         DatabaseMetaData metadata = connection.getMetaData();
-        boolean tableExists = false;
-        try (ResultSet rs = metadata.getTables(connection.getCatalog(), connection.getSchema(), null, new String[] { "TABLE" })) {
-            while (rs.next()) if (TABLE_NAME.equalsIgnoreCase(rs.getString("TABLE_NAME"))) { tableExists = true; break; }
-        }
-        if (!tableExists) {
+        if (!tableExists(metadata, connection)) {
             String sql = "CREATE TABLE " + TABLE_NAME + " (MIGRATION_ID VARCHAR(128) PRIMARY KEY, PLAN_HASH VARCHAR(64) NOT NULL, DEFINITION_HASH VARCHAR(64) NULL, STATUS VARCHAR(16) NOT NULL, CREATED_AT BIGINT NOT NULL, COMPLETED_AT BIGINT NULL, ERROR_MESSAGE VARCHAR(4000) NULL)";
-            try (PreparedStatement statement = connection.prepareStatement(sql)) { statement.executeUpdate(); }
-            return;
+            try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                try {
+                    statement.executeUpdate();
+                } catch (SQLException createFailure) {
+                    // Another application instance may have created the history table after
+                    // our existence check. Re-read metadata and only suppress that race.
+                    if (!tableExists(metadata, connection)) throw createFailure;
+                }
+            }
         }
-        boolean definitionHashExists = false;
-        try (ResultSet rs = metadata.getColumns(connection.getCatalog(), connection.getSchema(), TABLE_NAME, "%")) {
-            while (rs.next()) if ("DEFINITION_HASH".equalsIgnoreCase(rs.getString("COLUMN_NAME"))) { definitionHashExists = true; break; }
-        }
-        if (!definitionHashExists) {
-            try (PreparedStatement statement = connection.prepareStatement("ALTER TABLE " + TABLE_NAME + " ADD COLUMN DEFINITION_HASH VARCHAR(64) NULL")) { statement.executeUpdate(); }
+        if (!columnExists(metadata, connection, "DEFINITION_HASH")) {
+            try (PreparedStatement statement = connection.prepareStatement(
+                    "ALTER TABLE " + TABLE_NAME + " ADD COLUMN DEFINITION_HASH VARCHAR(64) NULL")) {
+                try {
+                    statement.executeUpdate();
+                } catch (SQLException alterFailure) {
+                    // Likewise, another initializer may have added the compatibility column.
+                    if (!columnExists(metadata, connection, "DEFINITION_HASH")) throw alterFailure;
+                }
+            }
         }
     }
 
@@ -141,6 +148,20 @@ public final class SchemaMigrationHistory {
             statement.setString(4, migrationId);
             if (statement.executeUpdate() != 1) throw new SQLException("Migration history entry not found: " + migrationId);
         }
+    }
+
+    private static boolean tableExists(DatabaseMetaData metadata, Connection connection) throws SQLException {
+        try (ResultSet rs = metadata.getTables(connection.getCatalog(), connection.getSchema(), null, new String[] { "TABLE" })) {
+            while (rs.next()) if (TABLE_NAME.equalsIgnoreCase(rs.getString("TABLE_NAME"))) return true;
+        }
+        return false;
+    }
+
+    private static boolean columnExists(DatabaseMetaData metadata, Connection connection, String columnName) throws SQLException {
+        try (ResultSet rs = metadata.getColumns(connection.getCatalog(), connection.getSchema(), TABLE_NAME, "%")) {
+            while (rs.next()) if (columnName.equalsIgnoreCase(rs.getString("COLUMN_NAME"))) return true;
+        }
+        return false;
     }
 
     private static Entry read(ResultSet rs) throws SQLException {
