@@ -13,35 +13,53 @@ import java.util.List;
 public final class SchemaMigrationHistory {
     public static final String TABLE_NAME = "QPX_SCHEMA_MIGRATION";
     public enum Status { RUNNING, APPLIED, FAILED }
-    public record Entry(String migrationId, String planHash, Status status,
+    public record Entry(String migrationId, String planHash, String definitionHash, Status status,
             java.time.Instant createdAt, java.time.Instant completedAt, String errorMessage) { }
 
     public void ensureTable(Connection connection) throws SQLException {
         requireConnection(connection);
         DatabaseMetaData metadata = connection.getMetaData();
+        boolean tableExists = false;
         try (ResultSet rs = metadata.getTables(connection.getCatalog(), connection.getSchema(), null, new String[] { "TABLE" })) {
-            while (rs.next()) if (TABLE_NAME.equalsIgnoreCase(rs.getString("TABLE_NAME"))) return;
+            while (rs.next()) if (TABLE_NAME.equalsIgnoreCase(rs.getString("TABLE_NAME"))) { tableExists = true; break; }
         }
-        String sql = "CREATE TABLE " + TABLE_NAME + " (MIGRATION_ID VARCHAR(128) PRIMARY KEY, PLAN_HASH VARCHAR(64) NOT NULL, STATUS VARCHAR(16) NOT NULL, CREATED_AT BIGINT NOT NULL, COMPLETED_AT BIGINT NULL, ERROR_MESSAGE VARCHAR(4000) NULL)";
-        try (PreparedStatement statement = connection.prepareStatement(sql)) { statement.executeUpdate(); }
+        if (!tableExists) {
+            String sql = "CREATE TABLE " + TABLE_NAME + " (MIGRATION_ID VARCHAR(128) PRIMARY KEY, PLAN_HASH VARCHAR(64) NOT NULL, DEFINITION_HASH VARCHAR(64) NULL, STATUS VARCHAR(16) NOT NULL, CREATED_AT BIGINT NOT NULL, COMPLETED_AT BIGINT NULL, ERROR_MESSAGE VARCHAR(4000) NULL)";
+            try (PreparedStatement statement = connection.prepareStatement(sql)) { statement.executeUpdate(); }
+            return;
+        }
+        boolean definitionHashExists = false;
+        try (ResultSet rs = metadata.getColumns(connection.getCatalog(), connection.getSchema(), TABLE_NAME, "%")) {
+            while (rs.next()) if ("DEFINITION_HASH".equalsIgnoreCase(rs.getString("COLUMN_NAME"))) { definitionHashExists = true; break; }
+        }
+        if (!definitionHashExists) {
+            try (PreparedStatement statement = connection.prepareStatement("ALTER TABLE " + TABLE_NAME + " ADD COLUMN DEFINITION_HASH VARCHAR(64) NULL")) { statement.executeUpdate(); }
+        }
     }
 
     public Entry start(Connection connection, String migrationId, String planHash) throws SQLException {
-        validateId(migrationId); validateHash(planHash);
+        return start(connection, migrationId, planHash, null);
+    }
+
+    /** Starts a migration and records both its executable plan hash and its declared-definition hash. */
+    public Entry start(Connection connection, String migrationId, String planHash, String definitionHash) throws SQLException {
+        validateId(migrationId); validateHash(planHash); validateOptionalHash(definitionHash);
         Entry existing = find(connection, migrationId);
         if (existing != null) {
-            if (existing.status() == Status.APPLIED && existing.planHash().equalsIgnoreCase(planHash)) return existing;
+            if (existing.status() == Status.APPLIED && existing.planHash().equalsIgnoreCase(planHash)
+                    && (definitionHash == null || definitionHash.equalsIgnoreCase(existing.definitionHash()))) return existing;
             throw new SchemaMigrationException("Migration ID already exists: " + migrationId
                     + " (status=" + existing.status() + ", planHash=" + existing.planHash() + ")");
         }
         java.time.Instant now = java.time.Instant.now();
-        String sql = "INSERT INTO " + TABLE_NAME + " (MIGRATION_ID, PLAN_HASH, STATUS, CREATED_AT) VALUES (?, ?, ?, ?)";
+        String sql = "INSERT INTO " + TABLE_NAME + " (MIGRATION_ID, PLAN_HASH, DEFINITION_HASH, STATUS, CREATED_AT) VALUES (?, ?, ?, ?, ?)";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, migrationId); statement.setString(2, planHash);
-            statement.setString(3, Status.RUNNING.name()); statement.setLong(4, now.toEpochMilli());
+            if (definitionHash == null) statement.setNull(3, java.sql.Types.VARCHAR); else statement.setString(3, definitionHash);
+            statement.setString(4, Status.RUNNING.name()); statement.setLong(5, now.toEpochMilli());
             statement.executeUpdate();
         }
-        return new Entry(migrationId, planHash, Status.RUNNING, now, null, null);
+        return new Entry(migrationId, planHash, definitionHash, Status.RUNNING, now, null, null);
     }
 
     /** Reopens a FAILED migration only when its original plan hash is unchanged. */
@@ -58,7 +76,7 @@ public final class SchemaMigrationHistory {
                     + " (stored=" + existing.planHash() + ", current=" + planHash + ")");
         }
         updateStatus(connection, migrationId, Status.RUNNING, null, null);
-        return new Entry(existing.migrationId(), existing.planHash(), Status.RUNNING,
+        return new Entry(existing.migrationId(), existing.planHash(), existing.definitionHash(), Status.RUNNING,
                 existing.createdAt(), null, null);
     }
 
@@ -73,7 +91,7 @@ public final class SchemaMigrationHistory {
 
     public Entry find(Connection connection, String migrationId) throws SQLException {
         validateId(migrationId);
-        String sql = "SELECT MIGRATION_ID, PLAN_HASH, STATUS, CREATED_AT, COMPLETED_AT, ERROR_MESSAGE FROM " + TABLE_NAME + " WHERE MIGRATION_ID = ?";
+        String sql = "SELECT MIGRATION_ID, PLAN_HASH, DEFINITION_HASH, STATUS, CREATED_AT, COMPLETED_AT, ERROR_MESSAGE FROM " + TABLE_NAME + " WHERE MIGRATION_ID = ?";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, migrationId);
             try (ResultSet rs = statement.executeQuery()) { return rs.next() ? read(rs) : null; }
@@ -81,7 +99,7 @@ public final class SchemaMigrationHistory {
     }
 
     public List<Entry> list(Connection connection) throws SQLException {
-        String sql = "SELECT MIGRATION_ID, PLAN_HASH, STATUS, CREATED_AT, COMPLETED_AT, ERROR_MESSAGE FROM " + TABLE_NAME + " ORDER BY CREATED_AT, MIGRATION_ID";
+        String sql = "SELECT MIGRATION_ID, PLAN_HASH, DEFINITION_HASH, STATUS, CREATED_AT, COMPLETED_AT, ERROR_MESSAGE FROM " + TABLE_NAME + " ORDER BY CREATED_AT, MIGRATION_ID";
         List<Entry> result = new ArrayList<>();
         try (PreparedStatement statement = connection.prepareStatement(sql); ResultSet rs = statement.executeQuery()) {
             while (rs.next()) result.add(read(rs));
@@ -104,10 +122,12 @@ public final class SchemaMigrationHistory {
     private static Entry read(ResultSet rs) throws SQLException {
         long created = rs.getLong("CREATED_AT"); long completedValue = rs.getLong("COMPLETED_AT");
         java.time.Instant completed = rs.wasNull() ? null : java.time.Instant.ofEpochMilli(completedValue);
-        return new Entry(rs.getString("MIGRATION_ID"), rs.getString("PLAN_HASH"), Status.valueOf(rs.getString("STATUS")), java.time.Instant.ofEpochMilli(created), completed, rs.getString("ERROR_MESSAGE"));
+        return new Entry(rs.getString("MIGRATION_ID"), rs.getString("PLAN_HASH"), rs.getString("DEFINITION_HASH"),
+                Status.valueOf(rs.getString("STATUS")), java.time.Instant.ofEpochMilli(created), completed, rs.getString("ERROR_MESSAGE"));
     }
     private static String truncate(String message) { return message == null || message.length() <= 4000 ? message : message.substring(0, 4000); }
     private static void validateId(String id) { if (id == null || id.isBlank() || id.length() > 128) throw new IllegalArgumentException("migrationId must be 1..128 characters"); }
     private static void validateHash(String hash) { if (hash == null || !hash.matches("[0-9a-fA-F]{64}")) throw new IllegalArgumentException("planHash must be a SHA-256 hex string"); }
+    private static void validateOptionalHash(String hash) { if (hash != null && !hash.matches("[0-9a-fA-F]{64}")) throw new IllegalArgumentException("definitionHash must be a SHA-256 hex string"); }
     private static void requireConnection(Connection connection) { if (connection == null) throw new IllegalArgumentException("connection must not be null"); }
 }
