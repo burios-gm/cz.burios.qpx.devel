@@ -26,6 +26,8 @@ public final class DBSchemaMigrationRunnerTest {
             if (planned.size() != 2) throw new AssertionError("Expected two planned migrations");
             if (planned.get(0).diff().isEmpty() || planned.get(0).planHash().length() != 64)
                 throw new AssertionError("Expected non-empty first plan with SHA-256 hash");
+            if (planned.get(0).sourceHash() == null || planned.get(0).sourceHash().length() != 64)
+                throw new AssertionError("Expected source metadata SHA-256 hash");
 
             DBSchemaMigrationApproval approval = DBSchemaMigrationApproval.fromPlan(planned.get(0));
             json = approval.toJson();
@@ -34,6 +36,7 @@ public final class DBSchemaMigrationRunnerTest {
             if (!json.contains("\"includeDrops\":false")) throw new AssertionError("Approval JSON must contain includeDrops");
             if (!json.contains("\"planFormat\":1")) throw new AssertionError("Approval JSON must contain plan format");
             if (!json.contains("\"planHash\":\"" + approval.planHash() + "\"")) throw new AssertionError("Approval JSON must contain plan hash");
+            if (!json.contains("\"sourceHash\":\"" + approval.sourceHash() + "\"")) throw new AssertionError("Approval JSON must contain source hash");
             if (!json.contains("\"changes\"")) throw new AssertionError("Approval JSON must contain executable changes");
 
             DBSchemaMigrationApproval restored = DBSchemaMigrationApproval.fromJson(json);
@@ -42,6 +45,7 @@ public final class DBSchemaMigrationRunnerTest {
             if (restored.includeDrops() != approval.includeDrops()) throw new AssertionError("Restored approval must retain includeDrops");
             if (restored.planFormat() != approval.planFormat()) throw new AssertionError("Restored approval must retain plan format");
             if (!restored.planHash().equals(approval.planHash())) throw new AssertionError("Restored approval hash must match original");
+            if (!restored.sourceHash().equals(approval.sourceHash())) throw new AssertionError("Restored source hash must match original");
             if (!restored.diff().toJson().equals(approval.diff().toJson())) throw new AssertionError("Restored changes must match original");
             try {
                 DBSchemaMigrationApproval.fromJson(json.replace(approval.planHash(), "0000000000000000000000000000000000000000000000000000000000000000"));
@@ -81,7 +85,7 @@ public final class DBSchemaMigrationRunnerTest {
 
             try {
                 DBSchemaMigrationApproval mismatchedDescription = new DBSchemaMigrationApproval(
-                        "V002", "wrong description", false, restored.diff(), restored.planHash());
+                        "V002", "wrong description", false, restored.planFormat(), restored.diff(), restored.planHash(), restored.sourceHash());
                 approver.applyApproval(applicationConnection, mismatchedDescription);
                 throw new AssertionError("Approval with mismatched migration description should be rejected");
             } catch (SchemaMigrationException expected) { }
@@ -119,8 +123,6 @@ public final class DBSchemaMigrationRunnerTest {
             throw new AssertionError("Duplicate migration IDs should fail case-insensitively");
         } catch (IllegalArgumentException expected) { }
 
-        // The default runner mode must follow the dialect: a non-transactional DDL dialect
-        // must be usable without forcing a transaction around DDL.
         H2Dialect h2 = new H2Dialect();
         DBDialect nonTransactional = new DBDialect() {
             @Override public String name() { return "H2-NONTRANSACTIONAL-TEST"; }
@@ -139,8 +141,6 @@ public final class DBSchemaMigrationRunnerTest {
             } catch (SchemaMigrationException expected) { }
         }
 
-        // JDBC character-case rules can allow V001 and v001 to coexist even though the
-        // runner treats migration IDs case-insensitively; validation must reject that state.
         try (Connection connection = DriverManager.getConnection("jdbc:h2:mem:migration_duplicate_history;DB_CLOSE_DELAY=-1")) {
             DBSchemaMigration migration = new DBSchemaMigration("V001", "one", duplicateDesired);
             DBSchemaMigrationRunner runner = new DBSchemaMigrationRunner(new H2Dialect(), migration);
