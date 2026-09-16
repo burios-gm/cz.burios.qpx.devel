@@ -123,7 +123,7 @@ public final class DBSchemaMigrationRunner {
         for (DBSchemaMigration migration : migrations) {
             SchemaMigrationHistory.Entry entry = history().find(connection, migration.id());
             if (entry != null && entry.status() == SchemaMigrationHistory.Status.APPLIED) continue;
-            applied.add(migrator.migrateRecorded(connection, migration.desired(), migration.id(), migration.includeDrops(), transactional, migration.definitionHash());
+            applied.add(migrator.migrateRecorded(connection, migration.desired(), migration.id(), migration.includeDrops(), transactional, migration.definitionHash()));
         }
         return Collections.unmodifiableList(applied);
     }
