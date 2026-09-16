@@ -34,6 +34,7 @@ public final class DBSchemaMigrationRunner {
 
     public List<DBSchemaMigration> pending(Connection connection) throws SQLException {
         requireConnection(connection); history().ensureTable(connection); List<SchemaMigrationHistory.Entry> entries = history().list(connection);
+        validateEntries(entries, null);
         List<DBSchemaMigration> result = new ArrayList<>();
         for (DBSchemaMigration migration : migrations) {
             SchemaMigrationHistory.Entry entry = findEntry(entries, migration.id());
@@ -88,7 +89,7 @@ public final class DBSchemaMigrationRunner {
         validate(connection);
         SchemaMigrationHistory.Entry existing = history().find(connection, migration.id());
         if (existing != null) throw new SchemaMigrationException("Migration is no longer pending: " + migration.id() + " (status=" + existing.status() + ")");
-        return migrator.applyRecorded(connection, approval.diff(), migration.id(), approval.planHash(), transactional);
+        return migrator.applyRecorded(connection, approval.diff(), migration.id(), approval.planHash(), migration.definitionHash(), transactional);
     }
 
     /** Applies a previously approved JSON plan without rebuilding it from current metadata. */
@@ -101,7 +102,7 @@ public final class DBSchemaMigrationRunner {
         return applyApproval(connection, DBSchemaMigrationApproval.fromJson(json), transactional);
     }
 
-    /** Validates that persisted history represents a contiguous migration sequence. */
+    /** Validates that persisted history represents a contiguous migration sequence and unchanged declarations. */
     public void validate(Connection connection) throws SQLException {
         requireConnection(connection); history().ensureTable(connection); validateEntries(history().list(connection), null);
     }
@@ -117,7 +118,7 @@ public final class DBSchemaMigrationRunner {
         for (DBSchemaMigration migration : migrations) {
             SchemaMigrationHistory.Entry entry = history().find(connection, migration.id());
             if (entry != null && entry.status() == SchemaMigrationHistory.Status.APPLIED) continue;
-            applied.add(migrator.migrateRecorded(connection, migration.desired(), migration.id(), migration.includeDrops(), transactional));
+            applied.add(migrator.migrateRecorded(connection, migration.desired(), migration.id(), migration.includeDrops(), transactional, migration.definitionHash()));
         }
         return Collections.unmodifiableList(applied);
     }
@@ -158,6 +159,10 @@ public final class DBSchemaMigrationRunner {
             boolean allowedFailed = retryId != null && migration.id().equalsIgnoreCase(retryId) && entry.status() == SchemaMigrationHistory.Status.FAILED;
             if (entry.status() == SchemaMigrationHistory.Status.RUNNING) throw new SchemaMigrationException("Migration is still RUNNING: " + migration.id());
             if (entry.status() == SchemaMigrationHistory.Status.FAILED && !allowedFailed) throw new SchemaMigrationException("Migration has FAILED: " + migration.id() + (entry.errorMessage() == null ? "" : " - " + entry.errorMessage()));
+            if (entry.status() == SchemaMigrationHistory.Status.APPLIED) {
+                if (entry.definitionHash() == null) throw new SchemaMigrationException("Applied migration has no definition hash: " + migration.id());
+                if (!entry.definitionHash().equalsIgnoreCase(migration.definitionHash())) throw new SchemaMigrationException("Migration definition changed after APPLIED: " + migration.id());
+            }
             if (previousPending && entry.status() == SchemaMigrationHistory.Status.APPLIED) throw new SchemaMigrationException("Migration history has a gap before: " + migration.id());
             if (entry.status() == SchemaMigrationHistory.Status.FAILED) previousPending = true;
         }
