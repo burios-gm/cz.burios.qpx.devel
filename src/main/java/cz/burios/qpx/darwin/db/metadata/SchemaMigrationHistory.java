@@ -91,7 +91,7 @@ public final class SchemaMigrationHistory {
 
     public Entry find(Connection connection, String migrationId) throws SQLException {
         validateId(migrationId);
-        String sql = "SELECT MIGRATION_ID, PLAN_HASH, DEFINITION_HASH, STATUS, CREATED_AT, COMPLETED_AT, ERROR_MESSAGE FROM " + TABLE_NAME + " WHERE MIGRATION_ID = ?";
+        String sql = "SELECT MIGRATION_ID, PLAN_HASH, DEFINITION_HASH, STATUS, CREATED_AT, COMPLETED_AT, ERROR_MESSAGE FROM " + TABLE_NAME + " WHERE LOWER(MIGRATION_ID) = LOWER(?)";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, migrationId);
             try (ResultSet rs = statement.executeQuery()) { return rs.next() ? read(rs) : null; }
@@ -109,7 +109,7 @@ public final class SchemaMigrationHistory {
 
     private static void updateStatus(Connection connection, String migrationId, Status status, java.time.Instant completedAt, String errorMessage) throws SQLException {
         requireConnection(connection);
-        String sql = "UPDATE " + TABLE_NAME + " SET STATUS = ?, COMPLETED_AT = ?, ERROR_MESSAGE = ? WHERE MIGRATION_ID = ?";
+        String sql = "UPDATE " + TABLE_NAME + " SET STATUS = ?, COMPLETED_AT = ?, ERROR_MESSAGE = ? WHERE LOWER(MIGRATION_ID) = LOWER(?)";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, status.name());
             if (completedAt == null) statement.setNull(2, java.sql.Types.BIGINT); else statement.setLong(2, completedAt.toEpochMilli());
