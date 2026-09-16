@@ -62,9 +62,14 @@ public final class SchemaMigrationHistory {
         return new Entry(migrationId, planHash, definitionHash, Status.RUNNING, now, null, null);
     }
 
-    /** Reopens a FAILED migration only when its original plan hash is unchanged. */
+    /** Reopens a FAILED migration only when its original plan and declaration hashes are unchanged. */
     public Entry retry(Connection connection, String migrationId, String planHash) throws SQLException {
-        validateId(migrationId); validateHash(planHash);
+        return retry(connection, migrationId, planHash, null);
+    }
+
+    /** Reopens a FAILED migration only when its original plan and, when supplied, declaration hashes are unchanged. */
+    public Entry retry(Connection connection, String migrationId, String planHash, String definitionHash) throws SQLException {
+        validateId(migrationId); validateHash(planHash); validateOptionalHash(definitionHash);
         Entry existing = find(connection, migrationId);
         if (existing == null) throw new SchemaMigrationException("Migration history entry not found: " + migrationId);
         if (existing.status() != Status.FAILED) {
@@ -74,6 +79,10 @@ public final class SchemaMigrationHistory {
         if (!existing.planHash().equalsIgnoreCase(planHash)) {
             throw new SchemaMigrationException("Migration plan hash changed: " + migrationId
                     + " (stored=" + existing.planHash() + ", current=" + planHash + ")");
+        }
+        if (definitionHash != null && !definitionHash.equalsIgnoreCase(existing.definitionHash())) {
+            throw new SchemaMigrationException("Migration definition hash changed: " + migrationId
+                    + " (stored=" + existing.definitionHash() + ", current=" + definitionHash + ")");
         }
         updateStatus(connection, migrationId, Status.RUNNING, null, null);
         return new Entry(existing.migrationId(), existing.planHash(), existing.definitionHash(), Status.RUNNING,
