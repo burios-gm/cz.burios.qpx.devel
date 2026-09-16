@@ -22,6 +22,13 @@ public interface DBDialect {
     default void loadIndexOptions(Connection connection, String catalog, String schema, String tableName, IndexMetaData index) throws SQLException {}
     default ColumnType logicalType(ColumnMetaData column) { if (column == null) return null; return switch (column.jdbcType) { case java.sql.Types.BOOLEAN, java.sql.Types.BIT -> ColumnType.BOOLEAN; case java.sql.Types.BIGINT -> ColumnType.LONG; case java.sql.Types.INTEGER, java.sql.Types.SMALLINT, java.sql.Types.TINYINT -> ColumnType.INTEGER; case java.sql.Types.DECIMAL, java.sql.Types.NUMERIC -> ColumnType.DECIMAL; case java.sql.Types.DOUBLE, java.sql.Types.FLOAT -> ColumnType.DOUBLE; case java.sql.Types.DATE -> ColumnType.DATE; case java.sql.Types.TIMESTAMP -> ColumnType.TIMESTAMP; case java.sql.Types.TIME -> ColumnType.TIME; case java.sql.Types.BINARY, java.sql.Types.VARBINARY, java.sql.Types.LONGVARBINARY -> ColumnType.BINARY; case java.sql.Types.LONGVARCHAR -> ColumnType.TEXT; default -> ColumnType.STRING; }; }
     default String tableName(TableMetaData table) { if (table.schema != null && !table.schema.isBlank()) return quote(table.schema) + "." + quote(table.name); if (table.database != null && !table.database.isBlank()) return quote(table.database) + "." + quote(table.name); return quote(table.name); }
+    /** Renders a table name from JDBC catalog/schema values using this dialect's namespace semantics. */
+    default String tableName(String catalog, String schema, String tableName) {
+        TableMetaData table = new TableMetaData(tableName);
+        if (schema != null && !schema.isBlank()) table.schema(schema);
+        if (catalog != null && !catalog.isBlank()) table.database(catalog);
+        return tableName(table);
+    }
     default String tableOptions(TableMetaData table) { if (table.params.isEmpty()) return ""; StringBuilder sql = new StringBuilder(); for (var entry : table.params.entrySet()) { if (entry.getKey() == null || entry.getKey().isBlank()) throw new IllegalArgumentException("Table option name must not be blank"); if (entry.getValue() == null) continue; if (sql.length() > 0) sql.append(' '); sql.append(entry.getKey()).append('=').append(entry.getValue()); } return sql.length() == 0 ? "" : " " + sql; }
     default String alterTableOptions(TableMetaData table) { throw new UnsupportedOperationException("Table option alteration is not supported by dialect: " + name()); }
     default String alterColumn(TableMetaData table, ColumnMetaData column) { throw new UnsupportedOperationException("Column alteration is not supported by dialect: " + name()); }
