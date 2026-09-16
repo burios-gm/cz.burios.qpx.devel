@@ -11,6 +11,13 @@ public record DBSchemaMigrationPlan(DBSchemaMigration migration, SchemaDiff diff
             throw new IllegalArgumentException("planHash does not match diff");
     }
 
+    /** Creates a plan from a migration and derives the hash from the immutable diff. */
+    public static DBSchemaMigrationPlan from(DBSchemaMigration migration, SchemaDiff diff) {
+        if (migration == null) throw new IllegalArgumentException("migration must not be null");
+        if (diff == null) throw new IllegalArgumentException("diff must not be null");
+        return new DBSchemaMigrationPlan(migration, diff, diff.planHash());
+    }
+
     public int planFormat() { return SchemaDiff.PLAN_FORMAT; }
 
     /** Converts this dry-run result into the standalone approval artifact. */
