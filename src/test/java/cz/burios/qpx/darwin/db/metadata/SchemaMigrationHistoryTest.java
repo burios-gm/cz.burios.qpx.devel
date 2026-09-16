@@ -2,6 +2,8 @@ package cz.burios.qpx.darwin.db.metadata;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import cz.burios.qpx.darwin.db.dialect.H2Dialect;
 
@@ -43,6 +45,61 @@ public final class SchemaMigrationHistoryTest {
                 throw new AssertionError("Expected FAILED history entry: " + failed);
             if (history.list(connection).size() != 2) throw new AssertionError("Expected two history entries");
         }
+
+        verifyConcurrentDuplicateIsRejected();
         System.out.println("SchemaMigrationHistoryTest: OK");
+    }
+
+    private static void verifyConcurrentDuplicateIsRejected() throws Exception {
+        String url = "jdbc:h2:mem:migration_history_concurrent;DB_CLOSE_DELAY=-1;LOCK_TIMEOUT=10000";
+        try (Connection setup = DriverManager.getConnection(url)) {
+            new SchemaMigrationHistory().ensureTable(setup);
+        }
+
+        try (Connection first = DriverManager.getConnection(url);
+             Connection second = DriverManager.getConnection(url)) {
+            SchemaMigrationHistory firstHistory = new SchemaMigrationHistory();
+            SchemaMigrationHistory secondHistory = new SchemaMigrationHistory();
+            String hash = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+            CountDownLatch ready = new CountDownLatch(2);
+            CountDownLatch go = new CountDownLatch(1);
+            AtomicInteger successes = new AtomicInteger();
+            AtomicInteger duplicates = new AtomicInteger();
+            Throwable[] failures = new Throwable[2];
+
+            Thread firstThread = new Thread(() -> runConcurrentStart(firstHistory, first, hash, ready, go, successes, duplicates, failures, 0), "migration-history-first");
+            Thread secondThread = new Thread(() -> runConcurrentStart(secondHistory, second, hash, ready, go, successes, duplicates, failures, 1), "migration-history-second");
+            firstThread.start();
+            secondThread.start();
+            ready.await();
+            go.countDown();
+            firstThread.join(10000);
+            secondThread.join(10000);
+
+            if (firstThread.isAlive() || secondThread.isAlive())
+                throw new AssertionError("Concurrent migration history starts did not finish");
+            if (failures[0] != null) throw new AssertionError("First concurrent start failed unexpectedly", failures[0]);
+            if (failures[1] != null) throw new AssertionError("Second concurrent start failed unexpectedly", failures[1]);
+            if (successes.get() != 1 || duplicates.get() != 1)
+                throw new AssertionError("Expected exactly one successful start and one duplicate: successes="
+                        + successes + ", duplicates=" + duplicates);
+            if (new SchemaMigrationHistory().list(first).size() != 1)
+                throw new AssertionError("Concurrent starts must leave exactly one history row");
+        }
+    }
+
+    private static void runConcurrentStart(SchemaMigrationHistory history, Connection connection, String hash,
+            CountDownLatch ready, CountDownLatch go, AtomicInteger successes, AtomicInteger duplicates,
+            Throwable[] failures, int failureIndex) {
+        try {
+            ready.countDown();
+            go.await();
+            history.start(connection, "V-CONCURRENT", hash);
+            successes.incrementAndGet();
+        } catch (SchemaMigrationException expected) {
+            duplicates.incrementAndGet();
+        } catch (Throwable failure) {
+            failures[failureIndex] = failure;
+        }
     }
 }
