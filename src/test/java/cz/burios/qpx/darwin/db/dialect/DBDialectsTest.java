@@ -4,18 +4,19 @@ import java.lang.reflect.Proxy;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 
-/** Executable dialect-factory test; no live database required. */
+/** Executable dialect-factory and capability test; no live database required. */
 public class DBDialectsTest {
     public static void main(String[] args) throws Exception {
-        assertDialect("MySQL", "mysql", MySQLDialect.class);
-        assertDialect("PostgreSQL", "postgresql", PostgreSQLDialect.class);
-        assertDialect("H2", "h2", H2Dialect.class);
-        assertDialect("Microsoft SQL Server", "mssql", MSSQLDialect.class);
-        assertDialect("Microsoft SQL Server 2022", "mssql", MSSQLDialect.class);
+        assertDialect("MySQL", "mysql", MySQLDialect.class, false);
+        assertDialect("PostgreSQL", "postgresql", PostgreSQLDialect.class, true);
+        assertDialect("H2", "h2", H2Dialect.class, true);
+        assertDialect("Microsoft SQL Server", "mssql", MSSQLDialect.class, true);
+        assertDialect("Microsoft SQL Server 2022", "mssql", MSSQLDialect.class, true);
         System.out.println("DBDialectsTest: OK");
     }
 
-    private static void assertDialect(String productName, String expectedName, Class<? extends DBDialect> expectedType) throws Exception {
+    private static void assertDialect(String productName, String expectedName, Class<? extends DBDialect> expectedType,
+            boolean expectedTransactionalDdl) throws Exception {
         DatabaseMetaData metadata = (DatabaseMetaData) Proxy.newProxyInstance(
                 DBDialectsTest.class.getClassLoader(),
                 new Class<?>[] {DatabaseMetaData.class},
@@ -34,6 +35,8 @@ public class DBDialectsTest {
         DBDialect dialect = DBDialects.forConnection(connection);
         if (!expectedName.equals(dialect.name())) throw new AssertionError(productName + " -> " + dialect.name());
         if (!expectedType.isInstance(dialect)) throw new AssertionError(productName + " -> " + dialect.getClass().getName());
+        if (dialect.supportsTransactionalDdl() != expectedTransactionalDdl)
+            throw new AssertionError(productName + " transactional DDL capability mismatch: " + dialect.supportsTransactionalDdl());
     }
 
     private static Object defaultValue(Class<?> type) {
