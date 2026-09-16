@@ -109,20 +109,27 @@ public final class DBSchemaMigrator {
         return startAndApplyRecorded(connection, diff, migrationId, planHash, definitionHash, transactional);
     }
 
-    /** Explicitly retries a FAILED migration; the persisted plan hash must still match. */
+    /** Explicitly retries a FAILED migration; the persisted plan and declaration hashes must still match. */
     public SchemaDiff retryRecorded(Connection connection, DBMetaData desired, String migrationId) throws SQLException {
-        return retryRecorded(connection, desired, migrationId, false, true);
+        return retryRecorded(connection, desired, migrationId, false, true, null);
     }
 
     public SchemaDiff retryRecorded(Connection connection, DBMetaData desired, String migrationId,
             boolean includeDrops, boolean transactional) throws SQLException {
+        return retryRecorded(connection, desired, migrationId, includeDrops, transactional, null);
+    }
+
+    /** Explicitly retries a FAILED migration and validates the declared-definition hash when supplied. */
+    public SchemaDiff retryRecorded(Connection connection, DBMetaData desired, String migrationId,
+            boolean includeDrops, boolean transactional, String definitionHash) throws SQLException {
         requireConnection(connection);
         validateMigrationId(migrationId);
+        if (definitionHash != null && !definitionHash.matches("[0-9a-fA-F]{64}")) throw new IllegalArgumentException("definitionHash must be a SHA-256 hex string");
         if (transactional && !connection.getAutoCommit()) throw new IllegalStateException("recorded transactional migration requires auto-commit to be enabled");
         SchemaDiff diff = plan(connection, desired, includeDrops);
         history.ensureTable(connection);
         if (transactional) ensureTransactionalDdl();
-        history.retry(connection, migrationId, diff.planHash());
+        history.retry(connection, migrationId, diff.planHash(), definitionHash);
         return applyRecordedChanges(connection, diff, migrationId, transactional);
     }
 
