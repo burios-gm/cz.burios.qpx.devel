@@ -51,5 +51,13 @@
 			<version>12.6.1.jre11</version>
 			<scope>test</scope>
 		</dependency>
+
+		<!-- JPA provider used only by JpaMetaDataReader integration tests. -->
+		<dependency>
+			<groupId>org.hibernate.orm</groupId>
+			<artifactId>hibernate-core</artifactId>
+			<version>6.4.10.Final</version>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 </project>
