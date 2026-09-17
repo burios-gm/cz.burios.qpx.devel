@@ -30,20 +30,12 @@ import jakarta.persistence.metamodel.Attribute;
 import jakarta.persistence.metamodel.EntityType;
 import jakarta.persistence.metamodel.Metamodel;
 
-/**
- * Reads the portable database metadata declared by JPA entity annotations.
- *
- * <p>The JPA metamodel is used as the authoritative list of entities and
- * persistent attributes. Annotation details are then read from the entity class,
- * so the reader does not depend on a particular JPA provider's internal metadata
- * implementation.</p>
- */
+/** Reads portable database metadata declared by JPA entity annotations. */
 public class JpaMetaDataReader {
 
-    /** Reads all {@link Entity} types known by the supplied persistence unit. */
+    /** Reads all entity types known by the supplied persistence unit. */
     public DBMetaData read(EntityManagerFactory entityManagerFactory) {
         if (entityManagerFactory == null) throw new IllegalArgumentException("entityManagerFactory must not be null");
-
         DBMetaData result = new DBMetaData();
         Metamodel metamodel = entityManagerFactory.getMetamodel();
         for (EntityType<?> entity : metamodel.getEntities()) result.add(readTable(entity));
@@ -53,12 +45,9 @@ public class JpaMetaDataReader {
     /** Reads one JPA entity into the common table metadata model. */
     public TableMetaData readTable(EntityType<?> entity) {
         if (entity == null) throw new IllegalArgumentException("entity must not be null");
-
         Class<?> javaType = entity.getJavaType();
         Table tableAnnotation = findAnnotation(javaType, Table.class);
-        String tableName = tableAnnotation != null && !tableAnnotation.name().isBlank()
-                ? tableAnnotation.name() : entity.getName();
-
+        String tableName = tableAnnotation != null && !tableAnnotation.name().isBlank() ? tableAnnotation.name() : entity.getName();
         TableMetaData table = new TableMetaData(tableName);
         if (tableAnnotation != null) {
             if (!tableAnnotation.catalog().isBlank()) table.database(tableAnnotation.catalog());
@@ -70,19 +59,24 @@ public class JpaMetaDataReader {
             if (attribute.getPersistentAttributeType() != Attribute.PersistentAttributeType.BASIC) continue;
             ColumnMetaData column = readColumn(javaType, attribute);
             if (column != null) table.addColumn(column);
+            if (column != null && column.unique) {
+                IndexMetaData index = new IndexMetaData(tableName + "_uk_" + column.name);
+                index.unique(true).column(column.name);
+                table.addIndex(index);
+            }
         }
 
         if (tableAnnotation != null) {
-            for (jakarta.persistence.Index indexAnnotation : tableAnnotation.indexes()) {
-                IndexMetaData index = new IndexMetaData(indexName(indexAnnotation.name(), tableName, indexAnnotation.columnList()));
-                index.unique(indexAnnotation.unique());
-                for (String column : indexAnnotation.columnList().split(",")) index.column(column.trim());
+            for (jakarta.persistence.Index annotation : tableAnnotation.indexes()) {
+                IndexMetaData index = new IndexMetaData(indexName(annotation.name(), tableName, annotation.columnList()));
+                index.unique(annotation.unique());
+                for (String column : annotation.columnList().split(",")) index.column(column.trim());
                 table.addIndex(index);
             }
-            for (UniqueConstraint constraint : tableAnnotation.uniqueConstraints()) {
-                IndexMetaData index = new IndexMetaData(indexName(constraint.name(), tableName, String.join(",", constraint.columnNames())));
+            for (UniqueConstraint annotation : tableAnnotation.uniqueConstraints()) {
+                IndexMetaData index = new IndexMetaData(indexName(annotation.name(), tableName, String.join(",", annotation.columnNames())));
                 index.unique(true);
-                for (String column : constraint.columnNames()) index.column(column.trim());
+                for (String column : annotation.columnNames()) index.column(column.trim());
                 table.addIndex(index);
             }
         }
@@ -93,69 +87,47 @@ public class JpaMetaDataReader {
         String attributeName = attribute.getName();
         Field field = findField(entityType, attributeName);
         Method getter = findGetter(entityType, attributeName);
-
         Column annotation = annotation(field, getter, Column.class);
         String columnName = annotation != null && !annotation.name().isBlank() ? annotation.name() : attributeName;
         ColumnMetaData column = new ColumnMetaData(columnName);
         column.label(attributeName);
-
-        Class<?> javaType = attribute.getJavaType();
-        applyLogicalType(column, javaType, field, getter);
-
+        applyLogicalType(column, attribute.getJavaType(), field, getter);
         if (annotation != null) {
             column.nullable(annotation.nullable());
             if (annotation.length() > 0) column.length(annotation.length());
             if (annotation.precision() > 0) column.precision(annotation.precision());
             if (annotation.scale() > 0) column.scale(annotation.scale());
             if (!annotation.columnDefinition().isBlank()) column.type(annotation.columnDefinition());
+            column.unique = annotation.unique();
         }
-
         if (annotation(field, getter, Id.class) != null) column.primaryKey(true);
-
         GeneratedValue generated = annotation(field, getter, GeneratedValue.class);
         if (generated != null && generated.strategy() == GenerationType.IDENTITY) column.autoIncrement(true);
-
         return column;
     }
 
     private void applyLogicalType(ColumnMetaData column, Class<?> javaType, Field field, Method getter) {
-        if (javaType == String.class || javaType == Character.class || javaType == char.class) {
-            column.logicalType(ColumnType.STRING);
-        } else if (javaType == boolean.class || javaType == Boolean.class) {
-            column.logicalType(ColumnType.BOOLEAN);
-        } else if (javaType == byte.class || javaType == Byte.class || javaType == short.class || javaType == Short.class
-                || javaType == int.class || javaType == Integer.class) {
-            column.logicalType(ColumnType.INTEGER);
-        } else if (javaType == long.class || javaType == Long.class || javaType == BigInteger.class) {
-            column.logicalType(ColumnType.LONG);
-        } else if (javaType == float.class || javaType == Float.class || javaType == double.class || javaType == Double.class) {
-            column.logicalType(ColumnType.DOUBLE);
-        } else if (javaType == BigDecimal.class) {
-            column.logicalType(ColumnType.DECIMAL);
-        } else if (javaType == byte[].class) {
-            column.logicalType(ColumnType.BINARY);
-        } else if (javaType == LocalDate.class) {
-            column.logicalType(ColumnType.DATE);
-        } else if (javaType == LocalTime.class || javaType == OffsetTime.class) {
-            column.logicalType(ColumnType.TIME);
-        } else if (javaType == LocalDateTime.class) {
-            column.logicalType(ColumnType.DATETIME);
-        } else if (javaType == Instant.class || javaType == OffsetDateTime.class || javaType == ZonedDateTime.class) {
-            column.logicalType(ColumnType.TIMESTAMP);
-        } else if (javaType == Date.class) {
+        if (javaType == String.class || javaType == Character.class || javaType == char.class) column.logicalType(ColumnType.STRING);
+        else if (javaType == boolean.class || javaType == Boolean.class) column.logicalType(ColumnType.BOOLEAN);
+        else if (javaType == byte.class || javaType == Byte.class || javaType == short.class || javaType == Short.class || javaType == int.class || javaType == Integer.class) column.logicalType(ColumnType.INTEGER);
+        else if (javaType == long.class || javaType == Long.class || javaType == BigInteger.class) column.logicalType(ColumnType.LONG);
+        else if (javaType == float.class || javaType == Float.class || javaType == double.class || javaType == Double.class) column.logicalType(ColumnType.DOUBLE);
+        else if (javaType == BigDecimal.class) column.logicalType(ColumnType.DECIMAL);
+        else if (javaType == byte[].class) column.logicalType(ColumnType.BINARY);
+        else if (javaType == LocalDate.class) column.logicalType(ColumnType.DATE);
+        else if (javaType == LocalTime.class || javaType == OffsetTime.class) column.logicalType(ColumnType.TIME);
+        else if (javaType == LocalDateTime.class) column.logicalType(ColumnType.DATETIME);
+        else if (javaType == Instant.class || javaType == OffsetDateTime.class || javaType == ZonedDateTime.class) column.logicalType(ColumnType.TIMESTAMP);
+        else if (javaType == Date.class) {
             Temporal temporal = annotation(field, getter, Temporal.class);
             if (temporal != null && temporal.value() == TemporalType.DATE) column.logicalType(ColumnType.DATE);
             else if (temporal != null && temporal.value() == TemporalType.TIME) column.logicalType(ColumnType.TIME);
             else column.logicalType(ColumnType.TIMESTAMP);
         } else if (javaType.isEnum()) {
             Enumerated enumerated = annotation(field, getter, Enumerated.class);
-            column.logicalType(enumerated != null && enumerated.value() == EnumType.ORDINAL
-                    ? ColumnType.INTEGER : ColumnType.STRING);
-        } else if (javaType == UUID.class) {
-            column.logicalType(ColumnType.STRING).length(36);
-        } else {
-            column.logicalType(null);
-        }
+            column.logicalType(enumerated != null && enumerated.value() == EnumType.ORDINAL ? ColumnType.INTEGER : ColumnType.STRING);
+        } else if (javaType == UUID.class) column.logicalType(ColumnType.STRING).length(36);
+        else column.logicalType(null);
     }
 
     private static String indexName(String explicitName, String tableName, String columns) {
@@ -179,8 +151,7 @@ public class JpaMetaDataReader {
 
     private static Field findField(Class<?> type, String name) {
         for (Class<?> current = type; current != null && current != Object.class; current = current.getSuperclass()) {
-            try { return current.getDeclaredField(name); }
-            catch (NoSuchFieldException ignored) { }
+            try { return current.getDeclaredField(name); } catch (NoSuchFieldException ignored) { }
         }
         return null;
     }
@@ -188,10 +159,8 @@ public class JpaMetaDataReader {
     private static Method findGetter(Class<?> type, String name) {
         String suffix = Character.toUpperCase(name.charAt(0)) + name.substring(1);
         for (Class<?> current = type; current != null && current != Object.class; current = current.getSuperclass()) {
-            try { return current.getDeclaredMethod("get" + suffix); }
-            catch (NoSuchMethodException ignored) { }
-            try { return current.getDeclaredMethod("is" + suffix); }
-            catch (NoSuchMethodException ignored) { }
+            try { return current.getDeclaredMethod("get" + suffix); } catch (NoSuchMethodException ignored) { }
+            try { return current.getDeclaredMethod("is" + suffix); } catch (NoSuchMethodException ignored) { }
         }
         return null;
     }
