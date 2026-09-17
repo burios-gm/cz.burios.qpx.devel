@@ -6,6 +6,7 @@
     <persistence-unit name="uniql-test" transaction-type="RESOURCE_LOCAL">
         <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
         <class>cz.burios.uniql.metadata.JpaMetaDataReaderTest$StringIdEntity</class>
+        <class>cz.burios.uniql.metadata.JpaMetaDataReaderTest$JpaIndexEntity</class>
         <properties>
             <property name="jakarta.persistence.jdbc.driver" value="org.h2.Driver"/>
             <property name="jakarta.persistence.jdbc.url" value="jdbc:h2:mem:uniql_metadata;DB_CLOSE_DELAY=-1"/>
