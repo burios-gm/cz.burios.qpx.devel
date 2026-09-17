@@ -2,8 +2,6 @@ package cz.burios.uniql.metadata;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.Instant;
@@ -18,6 +16,7 @@ import java.util.UUID;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
@@ -28,9 +27,7 @@ import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
 import jakarta.persistence.metamodel.Attribute;
 import jakarta.persistence.metamodel.EntityType;
-import jakarta.persistence.metamodel.ManagedType;
 import jakarta.persistence.metamodel.Metamodel;
-import jakarta.persistence.EntityManagerFactory;
 
 /**
  * Reads the portable database metadata declared by JPA entity annotations.
@@ -71,11 +68,7 @@ public class JpaMetaDataReader {
         table.label(entity.getName());
 
         for (Attribute<?, ?> attribute : entity.getAttributes()) {
-            if (attribute.getPersistentAttributeType() != Attribute.PersistentAttributeType.BASIC
-                    && attribute.getPersistentAttributeType() != Attribute.PersistentAttributeType.EMBEDDED) {
-                continue;
-            }
-            if (attribute.getPersistentAttributeType() == Attribute.PersistentAttributeType.EMBEDDED) continue;
+            if (attribute.getPersistentAttributeType() != Attribute.PersistentAttributeType.BASIC) continue;
 
             ColumnMetaData column = readColumn(javaType, attribute);
             if (column != null) table.addColumn(column);
@@ -116,7 +109,7 @@ public class JpaMetaDataReader {
         if (annotation(field, getter, Id.class) != null) column.primaryKey(true);
 
         GeneratedValue generated = annotation(field, getter, GeneratedValue.class);
-        if (generated != null && generated.strategy() != GenerationType.NONE) column.autoIncrement(true);
+        if (generated != null && generated.strategy() == GenerationType.IDENTITY) column.autoIncrement(true);
 
         return column;
     }
@@ -157,8 +150,6 @@ public class JpaMetaDataReader {
         } else if (javaType == UUID.class) {
             column.logicalType(ColumnType.STRING).length(36);
         } else {
-            // Provider-specific/basic types may still be represented by their
-            // JPA column definition; leave the logical type unspecified.
             column.logicalType(null);
         }
     }
