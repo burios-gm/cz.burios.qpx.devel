@@ -123,7 +123,7 @@ public class JpaMetaDataReader {
             if (!effective.columnDefinition().isBlank()) column.type(effective.columnDefinition());
             column.unique = effective.unique();
         }
-        column.primaryKey(true);
+        column.primaryKey(true).nullable(false);
         return column;
     }
 
@@ -144,7 +144,7 @@ public class JpaMetaDataReader {
             if (!annotation.columnDefinition().isBlank()) column.type(annotation.columnDefinition());
             column.unique = annotation.unique();
         }
-        if (annotation(field, getter, Id.class) != null) column.primaryKey(true);
+        if (annotation(field, getter, Id.class) != null) column.primaryKey(true).nullable(false);
         GeneratedValue generated = annotation(field, getter, GeneratedValue.class);
         if (generated != null && generated.strategy() == GenerationType.IDENTITY) column.autoIncrement(true);
         return column;
