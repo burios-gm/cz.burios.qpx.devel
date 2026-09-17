@@ -1,6 +1,6 @@
-package cz.burios.qpx.darwin.db.model;
+package cz.burios.uniql.model;
 
-import cz.burios.qpx.darwin.db.metadata.TableMetaData;
+import cz.burios.uniql.metadata.TableMetaData;
 
 /** Runtime record whose table definition comes from DB metadata rather than a Java POJO. */
 public class DynamicRecord extends BasicRecord {

@@ -10,7 +10,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import cz.burios.qpx.darwin.db.metadata.IndexMetaData;
+import cz.burios.uniql.dialect.*;
+import cz.burios.uniql.metadata.IndexMetaData;
 
 /** Executable test for dialect-specific index method loading; no JUnit required. */
 public class DialectIndexMetaDataTest {

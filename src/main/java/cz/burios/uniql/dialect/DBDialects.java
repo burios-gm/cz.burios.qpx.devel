@@ -1,4 +1,4 @@
-package cz.burios.qpx.darwin.db.dialect;
+package cz.burios.uniql.dialect;
 
 import java.sql.Connection;
 import java.sql.SQLException;

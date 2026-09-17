@@ -6,11 +6,12 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
-import cz.burios.qpx.darwin.db.dialect.DBDialect;
-import cz.burios.qpx.darwin.db.dialect.H2Dialect;
-import cz.burios.qpx.darwin.db.dialect.MSSQLDialect;
-import cz.burios.qpx.darwin.db.dialect.MySQLDialect;
-import cz.burios.qpx.darwin.db.dialect.PostgreSQLDialect;
+import cz.burios.uniql.dialect.DBDialect;
+import cz.burios.uniql.dialect.H2Dialect;
+import cz.burios.uniql.dialect.MSSQLDialect;
+import cz.burios.uniql.dialect.MySQLDialect;
+import cz.burios.uniql.dialect.PostgreSQLDialect;
+import cz.burios.uniql.metadata.*;
 
 /** Integration-level DDL test: verifies DBSchemaManager composes dialect SQL correctly. */
 public class DBSchemaManagerDdlTest {

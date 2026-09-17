@@ -2,10 +2,11 @@ package cz.burios.qpx.darwin.db.dialect;
 
 import java.util.List;
 
-import cz.burios.qpx.darwin.db.metadata.ColumnGeneration;
-import cz.burios.qpx.darwin.db.metadata.ColumnMetaData;
-import cz.burios.qpx.darwin.db.metadata.IndexMetaData;
-import cz.burios.qpx.darwin.db.metadata.TableMetaData;
+import cz.burios.uniql.dialect.*;
+import cz.burios.uniql.metadata.ColumnGeneration;
+import cz.burios.uniql.metadata.ColumnMetaData;
+import cz.burios.uniql.metadata.IndexMetaData;
+import cz.burios.uniql.metadata.TableMetaData;
 
 /** Executable cross-dialect DDL contract test; no live database required. */
 public class DialectDdlTest {

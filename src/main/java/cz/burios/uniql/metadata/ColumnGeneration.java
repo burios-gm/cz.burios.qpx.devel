@@ -1,4 +1,4 @@
-package cz.burios.qpx.darwin.db.metadata;
+package cz.burios.uniql.metadata;
 
 /** Database-independent semantic for automatic column value generation. */
 public enum ColumnGeneration {

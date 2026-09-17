@@ -1,10 +1,10 @@
-package cz.burios.qpx.darwin.db.metadata;
+package cz.burios.uniql.metadata;
 
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-import cz.burios.qpx.darwin.db.dialect.DBDialect;
+import cz.burios.uniql.dialect.DBDialect;
 
 /** Runtime DDL facade. All database-specific SQL is delegated to the dialect. */
 public class DBSchemaManager {

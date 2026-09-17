@@ -1,13 +1,13 @@
-package cz.burios.qpx.darwin.db.dialect;
+package cz.burios.uniql.dialect;
 
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-import cz.burios.qpx.darwin.db.metadata.ColumnMetaData;
-import cz.burios.qpx.darwin.db.metadata.ColumnType;
-import cz.burios.qpx.darwin.db.metadata.TableMetaData;
+import cz.burios.uniql.metadata.ColumnMetaData;
+import cz.burios.uniql.metadata.ColumnType;
+import cz.burios.uniql.metadata.TableMetaData;
 
 /** H2 dialect. JDBC schema is the SQL namespace; catalog is the database. */
 public class H2Dialect implements DBDialect {

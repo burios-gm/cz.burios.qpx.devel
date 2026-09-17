@@ -1,8 +1,12 @@
 package cz.burios.qpx.darwin.db.metadata;
 
 import java.sql.Types;
-import cz.burios.qpx.darwin.db.dialect.MySQLDialect;
-import cz.burios.qpx.darwin.db.dialect.PostgreSQLDialect;
+import cz.burios.uniql.dialect.MySQLDialect;
+import cz.burios.uniql.dialect.PostgreSQLDialect;
+import cz.burios.uniql.metadata.ColumnGeneration;
+import cz.burios.uniql.metadata.ColumnMetaData;
+import cz.burios.uniql.metadata.ColumnType;
+import cz.burios.uniql.metadata.TableMetaData;
 
 public class ColumnTypeTest {
     public static void main(String[] args) {

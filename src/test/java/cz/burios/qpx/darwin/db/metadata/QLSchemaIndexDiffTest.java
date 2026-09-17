@@ -1,5 +1,7 @@
 package cz.burios.qpx.darwin.db.metadata;
 
+import cz.burios.uniql.metadata.*;
+
 /** Executable index schema-diff test; no JUnit required. */
 public class QLSchemaIndexDiffTest {
     public static void main(String[] args) {

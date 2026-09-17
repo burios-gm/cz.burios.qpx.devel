@@ -1,6 +1,7 @@
 package cz.burios.qpx.darwin.db.metadata;
 
-import cz.burios.qpx.darwin.db.model.DynamicRecord;
+import cz.burios.uniql.metadata.*;
+import cz.burios.uniql.model.DynamicRecord;
 import java.sql.Connection;
 import java.sql.DriverManager;
 

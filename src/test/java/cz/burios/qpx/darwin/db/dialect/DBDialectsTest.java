@@ -4,6 +4,8 @@ import java.lang.reflect.Proxy;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 
+import cz.burios.uniql.dialect.*;
+
 /** Executable dialect-factory and capability test; no live database required. */
 public class DBDialectsTest {
     public static void main(String[] args) throws Exception {

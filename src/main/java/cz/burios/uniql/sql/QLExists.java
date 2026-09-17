@@ -1,4 +1,4 @@
-package cz.burios.qpx.darwin.db.uniql;
+package cz.burios.uniql.sql;
 
 /** SQL EXISTS / NOT EXISTS predicate. */
 public class QLExists extends QLExpr {

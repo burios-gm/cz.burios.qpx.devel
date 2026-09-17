@@ -12,8 +12,8 @@ import java.util.Map;
 
 import javax.sql.DataSource;
 
-import cz.burios.qpx.darwin.db.metadata.ColumnMetaData;
-import cz.burios.qpx.darwin.db.metadata.TableMetaData;
+import cz.burios.uniql.metadata.ColumnMetaData;
+import cz.burios.uniql.metadata.TableMetaData;
 
 public class DBContext {
 
@@ -55,9 +55,9 @@ public class DBContext {
 						while (rsCols.next()) {
 							/*
 							cols.add(new ColumnMetaData(
-									rsCols.getString("COLUMN_NAME"), 
+									rsCols.getString("COLUMN_NAME"),
 									rsCols.getInt("DATA_TYPE"),
-									rsCols.getString("TYPE_NAME"), 
+									rsCols.getString("TYPE_NAME"),
 									rsCols.getInt("COLUMN_SIZE"),
 									"YES".equalsIgnoreCase(rsCols.getString("IS_NULLABLE"))));
 							*/

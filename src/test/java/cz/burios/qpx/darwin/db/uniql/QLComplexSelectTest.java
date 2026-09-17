@@ -1,8 +1,10 @@
 package cz.burios.qpx.darwin.db.uniql;
 
-import static cz.burios.qpx.darwin.db.uniql.dsl.DSL.*;
+import static cz.burios.uniql.sql.dsl.DSL.*;
 
 import java.util.List;
+
+import cz.burios.uniql.sql.*;
 
 /** Executable tests for complex SELECT sources, joins, functions and CASE. */
 public class QLComplexSelectTest {

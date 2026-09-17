@@ -1,6 +1,8 @@
 package cz.burios.qpx.darwin.db.uniql;
 
-import static cz.burios.qpx.darwin.db.uniql.dsl.DSL.*;
+import static cz.burios.uniql.sql.dsl.DSL.*;
+
+import cz.burios.uniql.sql.*;
 
 /** Executable tests for derived tables, subselects and JOIN rendering. */
 public final class QLSubSelectJoinTest {

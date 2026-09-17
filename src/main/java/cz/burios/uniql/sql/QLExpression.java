@@ -1,4 +1,4 @@
-package cz.burios.qpx.darwin.db.uniql;
+package cz.burios.uniql.sql;
 
 /** Binary SQL arithmetic expression: a + b, a * b, ... */
 public class QLExpression extends QLExpr {

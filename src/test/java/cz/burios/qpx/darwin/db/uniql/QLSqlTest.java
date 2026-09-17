@@ -1,6 +1,8 @@
 package cz.burios.qpx.darwin.db.uniql;
 
-import static cz.burios.qpx.darwin.db.uniql.dsl.DSL.*;
+import static cz.burios.uniql.sql.dsl.DSL.*;
+
+import cz.burios.uniql.sql.*;
 
 public class QLSqlTest {
     public static void main(String[] args) throws Exception {

@@ -1,4 +1,4 @@
-package cz.burios.qpx.darwin.db.uniql;
+package cz.burios.uniql.sql;
 
 public class QLJoin extends QLExpr {
     public String type = "INNER";

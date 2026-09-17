@@ -3,8 +3,8 @@ package cz.burios.qpx.darwin.db.metadata;
 import java.sql.Connection;
 import java.sql.DriverManager;
 
-import cz.burios.qpx.darwin.db.dialect.DBDialect;
-import cz.burios.qpx.darwin.db.dialect.H2Dialect;
+import cz.burios.uniql.dialect.*;
+import cz.burios.uniql.metadata.*;
 
 /** Executable regression test for transactional DDL rollback on H2. */
 public final class DBSchemaMigratorTransactionalFailureTest {

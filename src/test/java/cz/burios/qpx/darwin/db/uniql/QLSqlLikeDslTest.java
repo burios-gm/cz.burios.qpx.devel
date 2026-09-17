@@ -1,6 +1,8 @@
 package cz.burios.qpx.darwin.db.uniql;
 
-import static cz.burios.qpx.darwin.db.uniql.dsl.DSL.*;
+import static cz.burios.uniql.sql.dsl.DSL.*;
+
+import cz.burios.uniql.sql.*;
 
 /** Executable smoke tests for the SQL-like fluent DSL; no JUnit required. */
 public final class QLSqlLikeDslTest {

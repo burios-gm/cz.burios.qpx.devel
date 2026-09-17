@@ -2,11 +2,12 @@ package cz.burios.qpx.darwin.db.dialect;
 
 import java.sql.Types;
 
-import cz.burios.qpx.darwin.db.metadata.ColumnGeneration;
-import cz.burios.qpx.darwin.db.metadata.ColumnMetaData;
-import cz.burios.qpx.darwin.db.metadata.ColumnType;
-import cz.burios.qpx.darwin.db.metadata.IndexMetaData;
-import cz.burios.qpx.darwin.db.metadata.TableMetaData;
+import cz.burios.uniql.dialect.MSSQLDialect;
+import cz.burios.uniql.metadata.ColumnGeneration;
+import cz.burios.uniql.metadata.ColumnMetaData;
+import cz.burios.uniql.metadata.ColumnType;
+import cz.burios.uniql.metadata.IndexMetaData;
+import cz.burios.uniql.metadata.TableMetaData;
 
 /** Executable SQL-generation test for Microsoft SQL Server; no live server required. */
 public class MSSQLDialectTest {

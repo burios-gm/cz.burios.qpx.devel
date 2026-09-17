@@ -1,4 +1,4 @@
-package cz.burios.qpx.darwin.db.metadata;
+package cz.burios.uniql.metadata;
 
 /** Immutable dry-run result for one declared schema migration. */
 public record DBSchemaMigrationPlan(DBSchemaMigration migration, SchemaDiff diff, String planHash, String sourceHash) {

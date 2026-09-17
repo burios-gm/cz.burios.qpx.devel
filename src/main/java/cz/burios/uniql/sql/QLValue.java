@@ -1,4 +1,4 @@
-package cz.burios.qpx.darwin.db.uniql;
+package cz.burios.uniql.sql;
 
 public class QLValue extends QLExpr {
     public Object value;

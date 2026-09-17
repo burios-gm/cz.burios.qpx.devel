@@ -1,4 +1,4 @@
-package cz.burios.qpx.darwin.db.metadata;
+package cz.burios.uniql.metadata;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -21,8 +21,8 @@ import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 
-import cz.burios.qpx.darwin.db.dialect.DBDialect;
-import cz.burios.qpx.darwin.db.dialect.DBDialects;
+import cz.burios.uniql.dialect.DBDialect;
+import cz.burios.uniql.dialect.DBDialects;
 
 /** Database metadata cache containing JDBC catalog/schema and discovered tables. */
 public class DBMetaData {

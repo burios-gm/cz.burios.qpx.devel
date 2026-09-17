@@ -4,8 +4,8 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.util.List;
 
-import cz.burios.qpx.darwin.db.dialect.H2Dialect;
-import cz.burios.qpx.darwin.db.dialect.MySQLDialect;
+import cz.burios.uniql.dialect.*;
+import cz.burios.uniql.metadata.*;
 
 /** Executable integration test for the schema migration facade; no JUnit required. */
 public class DBSchemaMigratorTest {

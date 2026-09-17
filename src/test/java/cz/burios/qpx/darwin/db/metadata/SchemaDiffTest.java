@@ -2,6 +2,8 @@ package cz.burios.qpx.darwin.db.metadata;
 
 import java.util.List;
 
+import cz.burios.uniql.metadata.*;
+
 /** Executable test for deterministic schema migration plan serialization and hashing. */
 public final class SchemaDiffTest {
     public static void main(String[] args) {

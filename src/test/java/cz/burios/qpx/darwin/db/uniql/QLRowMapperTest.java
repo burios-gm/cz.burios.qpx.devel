@@ -1,8 +1,8 @@
 package cz.burios.qpx.darwin.db.uniql;
 
-import static cz.burios.qpx.darwin.db.uniql.dsl.DSL.*;
+import static cz.burios.uniql.sql.dsl.DSL.*;
 
-import cz.burios.qpx.darwin.db.model.BasicRecord;
+import cz.burios.uniql.model.BasicRecord;
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.DriverManager;

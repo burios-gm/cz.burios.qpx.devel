@@ -1,5 +1,7 @@
 package cz.burios.qpx.darwin.db.metadata;
 
+import cz.burios.uniql.metadata.*;
+
 /** Executable test for database/schema-aware metadata identity. */
 public class QLQualifiedSchemaDiffTest {
     public static void main(String[] args) {

@@ -1,4 +1,4 @@
-package cz.burios.qpx.darwin.db.metadata;
+package cz.burios.uniql.metadata;
 
 import java.sql.SQLException;
 

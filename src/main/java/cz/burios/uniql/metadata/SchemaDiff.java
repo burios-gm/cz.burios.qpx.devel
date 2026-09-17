@@ -1,4 +1,4 @@
-package cz.burios.qpx.darwin.db.metadata;
+package cz.burios.uniql.metadata;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -19,7 +19,7 @@ import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 
-import cz.burios.qpx.darwin.db.dialect.DBDialect;
+import cz.burios.uniql.dialect.DBDialect;
 
 /** Compares desired table metadata with runtime database metadata and represents an immutable migration plan. */
 public final class SchemaDiff {

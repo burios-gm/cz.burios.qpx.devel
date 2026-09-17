@@ -1,6 +1,11 @@
 package cz.burios.qpx.darwin.db.metadata;
 
-import cz.burios.qpx.darwin.db.dialect.MySQLDialect;
+import cz.burios.uniql.dialect.MySQLDialect;
+import cz.burios.uniql.metadata.ColumnGeneration;
+import cz.burios.uniql.metadata.ColumnMetaData;
+import cz.burios.uniql.metadata.DBMetaData;
+import cz.burios.uniql.metadata.SchemaDiff;
+import cz.burios.uniql.metadata.TableMetaData;
 
 /** Executable smoke test for portable timestamp generation metadata. */
 public class ColumnGenerationTest {

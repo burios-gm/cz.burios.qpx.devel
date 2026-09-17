@@ -1,4 +1,4 @@
-package cz.burios.qpx.darwin.db.uniql;
+package cz.burios.uniql.sql;
 
 /** Explicit parentheses around any SQL expression. */
 public class QLBrackets extends QLExpr {

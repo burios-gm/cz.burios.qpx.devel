@@ -3,7 +3,8 @@ package cz.burios.qpx.darwin.db.metadata;
 import java.sql.Connection;
 import java.sql.DriverManager;
 
-import cz.burios.qpx.darwin.db.dialect.MySQLDialect;
+import cz.burios.uniql.dialect.*;
+import cz.burios.uniql.metadata.*;
 
 /** Executable schema-diff test; no JUnit required. */
 public class QLSchemaDiffTest {

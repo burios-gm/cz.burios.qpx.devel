@@ -1,4 +1,4 @@
-package cz.burios.qpx.darwin.db.metadata;
+package cz.burios.uniql.metadata;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -10,8 +10,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
-import cz.burios.qpx.darwin.db.dialect.DBDialect;
-import cz.burios.qpx.darwin.db.dialect.DBDialects;
+import cz.burios.uniql.dialect.DBDialect;
+import cz.burios.uniql.dialect.DBDialects;
 
 /** Persistent execution history for metadata-driven schema migrations. */
 public final class SchemaMigrationHistory {

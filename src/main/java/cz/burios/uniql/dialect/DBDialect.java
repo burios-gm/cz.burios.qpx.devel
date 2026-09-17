@@ -1,13 +1,13 @@
-package cz.burios.qpx.darwin.db.dialect;
+package cz.burios.uniql.dialect;
 
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
 
-import cz.burios.qpx.darwin.db.metadata.ColumnMetaData;
-import cz.burios.qpx.darwin.db.metadata.ColumnType;
-import cz.burios.qpx.darwin.db.metadata.IndexMetaData;
-import cz.burios.qpx.darwin.db.metadata.TableMetaData;
+import cz.burios.uniql.metadata.ColumnMetaData;
+import cz.burios.uniql.metadata.ColumnType;
+import cz.burios.uniql.metadata.IndexMetaData;
+import cz.burios.uniql.metadata.TableMetaData;
 
 /** Database-specific SQL and JDBC metadata conventions. */
 public interface DBDialect {

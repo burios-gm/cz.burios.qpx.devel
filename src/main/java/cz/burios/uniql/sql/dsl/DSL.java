@@ -1,11 +1,11 @@
-package cz.burios.qpx.darwin.db.uniql.dsl;
+package cz.burios.uniql.sql.dsl;
 
-import cz.burios.qpx.darwin.db.model.BasicRecord;
-import cz.burios.qpx.darwin.db.model.DynamicRecord;
-import cz.burios.qpx.darwin.db.metadata.ColumnMetaData;
-import cz.burios.qpx.darwin.db.metadata.QLRecordMetadata;
-import cz.burios.qpx.darwin.db.metadata.TableMetaData;
-import cz.burios.qpx.darwin.db.uniql.*;
+import cz.burios.uniql.model.BasicRecord;
+import cz.burios.uniql.model.DynamicRecord;
+import cz.burios.uniql.metadata.ColumnMetaData;
+import cz.burios.uniql.metadata.QLRecordMetadata;
+import cz.burios.uniql.metadata.TableMetaData;
+import cz.burios.uniql.sql.*;
 import java.sql.*;
 import java.util.Arrays;
 import java.util.List;

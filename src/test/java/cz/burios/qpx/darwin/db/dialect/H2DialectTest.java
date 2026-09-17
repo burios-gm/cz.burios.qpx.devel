@@ -2,9 +2,10 @@ package cz.burios.qpx.darwin.db.dialect;
 
 import java.util.List;
 
-import cz.burios.qpx.darwin.db.metadata.ColumnMetaData;
-import cz.burios.qpx.darwin.db.metadata.ColumnType;
-import cz.burios.qpx.darwin.db.metadata.TableMetaData;
+import cz.burios.uniql.dialect.H2Dialect;
+import cz.burios.uniql.metadata.ColumnMetaData;
+import cz.burios.uniql.metadata.ColumnType;
+import cz.burios.uniql.metadata.TableMetaData;
 
 /** Executable H2 SQL-generation test; no live database required. */
 public class H2DialectTest {

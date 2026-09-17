@@ -1,9 +1,9 @@
-package cz.burios.qpx.darwin.db.metadata;
+package cz.burios.uniql.metadata;
 
 import java.sql.Connection;
 import java.sql.SQLException;
 
-import cz.burios.qpx.darwin.db.dialect.DBDialect;
+import cz.burios.uniql.dialect.DBDialect;
 
 /** Plans and applies metadata-driven database schema migrations. */
 public final class DBSchemaMigrator {

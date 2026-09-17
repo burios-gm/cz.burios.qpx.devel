@@ -1,6 +1,6 @@
-package cz.burios.qpx.darwin.db.metadata;
+package cz.burios.uniql.metadata;
 
-import cz.burios.qpx.darwin.db.model.BasicRecord;
+import cz.burios.uniql.model.BasicRecord;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;

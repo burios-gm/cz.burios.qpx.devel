@@ -1,6 +1,8 @@
 package cz.burios.qpx.darwin.db.uniql;
 
-import static cz.burios.qpx.darwin.db.uniql.dsl.DSL.*;
+import static cz.burios.uniql.sql.dsl.DSL.*;
+
+import cz.burios.uniql.sql.*;
 
 /** Executable smoke tests; run with assertions enabled. */
 public final class QLSchemaTest {

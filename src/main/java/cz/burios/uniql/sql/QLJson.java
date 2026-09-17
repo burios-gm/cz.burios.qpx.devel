@@ -1,4 +1,4 @@
-package cz.burios.qpx.darwin.db.uniql;
+package cz.burios.uniql.sql;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 

@@ -6,8 +6,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import cz.burios.qpx.darwin.db.DBContext;
-import cz.burios.qpx.darwin.db.model.BasicRecord;
-import cz.burios.qpx.darwin.db.uniql.dsl.DSL;
+import cz.burios.uniql.model.BasicRecord;
+import cz.burios.uniql.sql.dsl.DSL;
 import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.ArrayList;

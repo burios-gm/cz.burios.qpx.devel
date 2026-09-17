@@ -3,7 +3,8 @@ package cz.burios.qpx.darwin.db.dialect;
 import java.lang.reflect.Proxy;
 import java.sql.Connection;
 
-import cz.burios.qpx.darwin.db.metadata.TableMetaData;
+import cz.burios.uniql.dialect.*;
+import cz.burios.uniql.metadata.TableMetaData;
 
 /** Executable test for dialect-specific JDBC catalog/schema semantics. */
 public final class DBDialectCatalogSchemaTest {

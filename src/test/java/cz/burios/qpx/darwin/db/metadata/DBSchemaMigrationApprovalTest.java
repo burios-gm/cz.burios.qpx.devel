@@ -5,6 +5,8 @@ import java.util.List;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import cz.burios.uniql.metadata.*;
+
 /** Executable test for schema migration approval serialization, versioning and tamper rejection. */
 public final class DBSchemaMigrationApprovalTest {
     private static final ObjectMapper JSON = new ObjectMapper();

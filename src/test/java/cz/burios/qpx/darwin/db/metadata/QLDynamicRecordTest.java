@@ -1,8 +1,9 @@
 package cz.burios.qpx.darwin.db.metadata;
 
-import static cz.burios.qpx.darwin.db.uniql.dsl.DSL.*;
+import static cz.burios.uniql.sql.dsl.DSL.*;
 
-import cz.burios.qpx.darwin.db.model.DynamicRecord;
+import cz.burios.uniql.metadata.*;
+import cz.burios.uniql.model.DynamicRecord;
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.DriverManager;

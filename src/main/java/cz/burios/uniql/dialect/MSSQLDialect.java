@@ -1,4 +1,4 @@
-package cz.burios.qpx.darwin.db.dialect;
+package cz.burios.uniql.dialect;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -7,11 +7,11 @@ import java.sql.SQLException;
 import java.sql.Types;
 import java.util.Locale;
 
-import cz.burios.qpx.darwin.db.metadata.ColumnGeneration;
-import cz.burios.qpx.darwin.db.metadata.ColumnMetaData;
-import cz.burios.qpx.darwin.db.metadata.ColumnType;
-import cz.burios.qpx.darwin.db.metadata.IndexMetaData;
-import cz.burios.qpx.darwin.db.metadata.TableMetaData;
+import cz.burios.uniql.metadata.ColumnGeneration;
+import cz.burios.uniql.metadata.ColumnMetaData;
+import cz.burios.uniql.metadata.ColumnType;
+import cz.burios.uniql.metadata.IndexMetaData;
+import cz.burios.uniql.metadata.TableMetaData;
 
 /** Microsoft SQL Server dialect: catalog is the database, schema is the SQL schema. */
 public class MSSQLDialect implements DBDialect {

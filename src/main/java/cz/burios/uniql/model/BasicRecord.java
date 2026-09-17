@@ -1,4 +1,4 @@
-package cz.burios.qpx.darwin.db.model;
+package cz.burios.uniql.model;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;

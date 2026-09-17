@@ -1,4 +1,4 @@
-package cz.burios.qpx.darwin.db.metadata;
+package cz.burios.uniql.metadata;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
-import cz.burios.qpx.darwin.db.dialect.DBDialect;
+import cz.burios.uniql.dialect.DBDialect;
 
 /** Executes an ordered application migration sequence backed by persistent history. */
 public final class DBSchemaMigrationRunner {

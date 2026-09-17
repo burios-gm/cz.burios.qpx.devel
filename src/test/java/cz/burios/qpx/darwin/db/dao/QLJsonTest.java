@@ -1,7 +1,7 @@
 package cz.burios.qpx.darwin.db.dao;
 
-import cz.burios.qpx.darwin.db.uniql.QLJson;
-import cz.burios.qpx.darwin.db.uniql.QLSql;
+import cz.burios.uniql.sql.QLJson;
+import cz.burios.uniql.sql.QLSql;
 
 /** Simple executable smoke test; kept dependency-free. */
 public final class QLJsonTest {

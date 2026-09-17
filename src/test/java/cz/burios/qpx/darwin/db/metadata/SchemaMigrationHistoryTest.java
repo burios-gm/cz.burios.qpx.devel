@@ -5,7 +5,8 @@ import java.sql.DriverManager;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import cz.burios.qpx.darwin.db.dialect.H2Dialect;
+import cz.burios.uniql.dialect.*;
+import cz.burios.uniql.metadata.*;
 
 /** Executable integration test for persistent migration history. */
 public final class SchemaMigrationHistoryTest {

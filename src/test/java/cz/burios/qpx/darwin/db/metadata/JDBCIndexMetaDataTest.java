@@ -10,6 +10,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import cz.burios.uniql.metadata.*;
+
 /** Executable test for DatabaseMetaData.getIndexInfo() loading; no JUnit required. */
 public class JDBCIndexMetaDataTest {
     public static void main(String[] args) throws Exception {

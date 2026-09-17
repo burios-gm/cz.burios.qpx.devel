@@ -4,8 +4,8 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.util.List;
 
-import cz.burios.qpx.darwin.db.dialect.DBDialect;
-import cz.burios.qpx.darwin.db.dialect.H2Dialect;
+import cz.burios.uniql.dialect.*;
+import cz.burios.uniql.metadata.*;
 
 /** Executable regression test for runner-managed transactional failure and retry. */
 public final class DBSchemaMigrationRunnerFailureRetryTest {
