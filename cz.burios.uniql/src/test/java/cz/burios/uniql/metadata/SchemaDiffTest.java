@@ -1,19 +1,20 @@
 package cz.burios.uniql.metadata;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import java.util.List;
-
-import org.junit.jupiter.api.Test;
 
 import cz.burios.uniql.dialect.H2Dialect;
 
-class SchemaDiffTest {
+/** Executable tests for schema migration planning. */
+public class SchemaDiffTest {
 
-    @Test
-    void createsCompositePrimaryKeyInColumnOrder() {
+    public static void main(String[] args) {
+        SchemaDiffTest test = new SchemaDiffTest();
+        test.createsCompositePrimaryKeyInColumnOrder();
+        test.detectsChangedUniqueIndexDefinition();
+        System.out.println("SchemaDiffTest: OK");
+    }
+
+    public void createsCompositePrimaryKeyInColumnOrder() {
         DBMetaData actual = new DBMetaData();
         DBMetaData desired = new DBMetaData();
         TableMetaData table = new TableMetaData("orders");
@@ -23,16 +24,14 @@ class SchemaDiffTest {
         desired.add(table);
 
         SchemaDiff diff = SchemaDiff.compare(actual, desired);
-
-        assertFalse(diff.isEmpty());
-        assertEquals(SchemaChange.Type.CREATE_TABLE, diff.changes().get(0).type());
-        assertEquals(List.of(
+        check(!diff.isEmpty(), "composite primary-key migration must not be empty");
+        check(diff.changes().get(0).type() == SchemaChange.Type.CREATE_TABLE, "first change must create the table");
+        check(diff.toSQL(new H2Dialect()).equals(List.of(
                 "CREATE TABLE \"orders\" (\"tenant_code\" VARCHAR(20) NOT NULL, \"order_no\" VARCHAR(20) NOT NULL, \"description\" VARCHAR(100), PRIMARY KEY (\"tenant_code\", \"order_no\"))"
-        ), diff.toSQL(new H2Dialect()));
+        )), "composite primary-key SQL has unexpected column order or syntax");
     }
 
-    @Test
-    void detectsChangedUniqueIndexDefinition() {
+    public void detectsChangedUniqueIndexDefinition() {
         DBMetaData actual = new DBMetaData();
         DBMetaData desired = new DBMetaData();
         TableMetaData actualTable = new TableMetaData("orders");
@@ -48,10 +47,13 @@ class SchemaDiffTest {
         desired.add(desiredTable);
 
         SchemaDiff diff = SchemaDiff.compare(actual, desired);
+        check(diff.size() == 2, "changed index must produce DROP + CREATE");
+        check(diff.changes().get(0).type() == SchemaChange.Type.DROP_INDEX, "first index change must drop old index");
+        check(diff.changes().get(1).type() == SchemaChange.Type.CREATE_INDEX, "second index change must create new index");
+        check(diff.toSQL(new H2Dialect()).contains("CREATE UNIQUE INDEX \"uk_orders\" ON \"orders\" (\"tenant_code\", \"order_no\")"), "unique index SQL is wrong");
+    }
 
-        assertEquals(2, diff.size());
-        assertEquals(SchemaChange.Type.DROP_INDEX, diff.changes().get(0).type());
-        assertEquals(SchemaChange.Type.CREATE_INDEX, diff.changes().get(1).type());
-        assertTrue(diff.toSQL(new H2Dialect()).contains("CREATE UNIQUE INDEX \"uk_orders\" ON \"orders\" (\"tenant_code\", \"order_no\")"));
+    private static void check(boolean condition, String message) {
+        if (!condition) throw new AssertionError(message);
     }
 }
