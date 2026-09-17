@@ -11,8 +11,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
 
 /** Executable integration test for mapping SELECT rows to BasicRecord POJOs. */
 public final class QLRowMapperTest {
@@ -56,7 +54,7 @@ public final class QLRowMapperTest {
         assert Integer.valueOf(7).equals(row.get("ID")); assert "Prague".equals(row.getString("STORE_NAME")); assert Boolean.TRUE.equals(row.getBoolean("ACTIVE"));
     }
 
-    @Entity @Table(name = "store")
+    /** Mapping target intentionally has no @Entity: it is a simple projection DTO. */
     public static class StoreRecord extends BasicRecord {
         @Column(name = "ID") public int id;
         @Column(name = "STORE_NAME") public String name;
