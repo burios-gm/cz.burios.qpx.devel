@@ -59,5 +59,12 @@
 			<version>6.4.10.Final</version>
 			<scope>test</scope>
 		</dependency>
+		<!-- JUnit 5 tests. -->
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter</artifactId>
+			<version>5.10.3</version>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 </project>
