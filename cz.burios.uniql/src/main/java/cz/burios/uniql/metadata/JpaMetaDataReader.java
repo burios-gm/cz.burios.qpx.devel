@@ -25,6 +25,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
+import jakarta.persistence.UniqueConstraint;
 import jakarta.persistence.metamodel.Attribute;
 import jakarta.persistence.metamodel.EntityType;
 import jakarta.persistence.metamodel.Metamodel;
@@ -33,9 +34,9 @@ import jakarta.persistence.metamodel.Metamodel;
  * Reads the portable database metadata declared by JPA entity annotations.
  *
  * <p>The JPA metamodel is used as the authoritative list of entities and
- * persistent attributes. Annotation details are then read from the entity
- * class, so the reader does not depend on a particular JPA provider's
- * internal metadata implementation.</p>
+ * persistent attributes. Annotation details are then read from the entity class,
+ * so the reader does not depend on a particular JPA provider's internal metadata
+ * implementation.</p>
  */
 public class JpaMetaDataReader {
 
@@ -45,9 +46,7 @@ public class JpaMetaDataReader {
 
         DBMetaData result = new DBMetaData();
         Metamodel metamodel = entityManagerFactory.getMetamodel();
-        for (EntityType<?> entity : metamodel.getEntities()) {
-            result.add(readTable(entity));
-        }
+        for (EntityType<?> entity : metamodel.getEntities()) result.add(readTable(entity));
         return result;
     }
 
@@ -69,16 +68,21 @@ public class JpaMetaDataReader {
 
         for (Attribute<?, ?> attribute : entity.getAttributes()) {
             if (attribute.getPersistentAttributeType() != Attribute.PersistentAttributeType.BASIC) continue;
-
             ColumnMetaData column = readColumn(javaType, attribute);
             if (column != null) table.addColumn(column);
         }
 
         if (tableAnnotation != null) {
             for (jakarta.persistence.Index indexAnnotation : tableAnnotation.indexes()) {
-                IndexMetaData index = new IndexMetaData(indexAnnotation.name());
+                IndexMetaData index = new IndexMetaData(indexName(indexAnnotation.name(), tableName, indexAnnotation.columnList()));
                 index.unique(indexAnnotation.unique());
                 for (String column : indexAnnotation.columnList().split(",")) index.column(column.trim());
+                table.addIndex(index);
+            }
+            for (UniqueConstraint constraint : tableAnnotation.uniqueConstraints()) {
+                IndexMetaData index = new IndexMetaData(indexName(constraint.name(), tableName, String.join(",", constraint.columnNames())));
+                index.unique(true);
+                for (String column : constraint.columnNames()) index.column(column.trim());
                 table.addIndex(index);
             }
         }
@@ -152,6 +156,12 @@ public class JpaMetaDataReader {
         } else {
             column.logicalType(null);
         }
+    }
+
+    private static String indexName(String explicitName, String tableName, String columns) {
+        if (explicitName != null && !explicitName.isBlank()) return explicitName;
+        String normalized = columns == null ? "" : columns.trim().replaceAll("\\s*,\\s*", "_");
+        return tableName + "_uk_" + normalized;
     }
 
     private static <A extends java.lang.annotation.Annotation> A annotation(Field field, Method getter, Class<A> type) {
