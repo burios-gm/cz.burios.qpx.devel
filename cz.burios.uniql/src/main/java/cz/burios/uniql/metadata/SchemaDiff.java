@@ -55,14 +55,14 @@ public final class SchemaDiff {
         Map<String, TableMetaData> actualTables = indexTables(actual.tables);
         Map<String, TableMetaData> desiredTables = indexTables(desired.tables);
         for (TableMetaData wanted : desired.tables.values()) {
-            TableMetaData existing = actualTables.get(key(wanted));
+            TableMetaData existing = findActualTable(actualTables, actual.tables.values(), wanted);
             if (existing == null) { result.add(SchemaChange.createTable(wanted)); continue; }
             diffColumns(result, existing, wanted, includeDrops);
             diffIndexes(result, existing, wanted, includeDrops);
             if (!sameParams(existing, wanted)) result.add(SchemaChange.alterTableParams(wanted));
         }
         if (includeDrops) for (TableMetaData existing : actual.tables.values())
-            if (!desiredTables.containsKey(key(existing))) result.add(SchemaChange.dropTable(existing));
+            if (!representedByDesired(existing, desiredTables, desired.tables.values())) result.add(SchemaChange.dropTable(existing));
         return new SchemaDiff(result);
     }
 
@@ -129,9 +129,7 @@ public final class SchemaDiff {
     }
 
     @Override
-    public int hashCode() {
-        return toJson().hashCode();
-    }
+    public int hashCode() { return toJson().hashCode(); }
 
     private static int phase(SchemaChange.Type type) {
         return switch (type) {
@@ -166,6 +164,37 @@ public final class SchemaDiff {
                     throw new IllegalArgumentException("index " + table.name + "." + index.name + " references missing column " + column);
             }
         }
+    }
+
+    /**
+     * Finds an actual table for a desired table. Explicit desired catalog/schema are
+     * matched exactly; an unspecified desired namespace is matched by table name.
+     */
+    private static TableMetaData findActualTable(Map<String, TableMetaData> exactActual,
+                                                  Iterable<TableMetaData> actualTables,
+                                                  TableMetaData desired) {
+        if (hasNamespace(desired)) return exactActual.get(key(desired));
+        TableMetaData found = null;
+        for (TableMetaData candidate : actualTables) {
+            if (!equalIgnoreCase(candidate.name, desired.name)) continue;
+            if (found != null)
+                throw new IllegalArgumentException("ambiguous desired table without catalog/schema: " + desired.name);
+            found = candidate;
+        }
+        return found;
+    }
+
+    private static boolean representedByDesired(TableMetaData actual,
+                                                  Map<String, TableMetaData> exactDesired,
+                                                  Iterable<TableMetaData> desiredTables) {
+        if (exactDesired.containsKey(key(actual))) return true;
+        for (TableMetaData desired : desiredTables)
+            if (!hasNamespace(desired) && equalIgnoreCase(actual.name, desired.name)) return true;
+        return false;
+    }
+
+    private static boolean hasNamespace(TableMetaData table) {
+        return (table.database != null && !table.database.isBlank()) || (table.schema != null && !table.schema.isBlank());
     }
 
     private static void diffColumns(List<SchemaChange> result, TableMetaData actual, TableMetaData desired, boolean includeDrops) {
@@ -236,6 +265,7 @@ public final class SchemaDiff {
         for (Map.Entry<String, Object> entry : params.entrySet()) if (entry.getKey().equalsIgnoreCase(name)) return entry.getValue();
         return null;
     }
+
     private static Map<String, TableMetaData> indexTables(Map<String, TableMetaData> source) { Map<String, TableMetaData> result = new LinkedHashMap<>(); for (TableMetaData table : source.values()) result.put(key(table), table); return result; }
     private static Map<String, ColumnMetaData> indexColumns(List<ColumnMetaData> source) { Map<String, ColumnMetaData> result = new LinkedHashMap<>(); for (ColumnMetaData column : source) result.put(key(column.name), column); return result; }
     private static Map<String, IndexMetaData> indexIndexes(List<IndexMetaData> source) { Map<String, IndexMetaData> result = new LinkedHashMap<>(); for (IndexMetaData index : source) result.put(key(index.name), index); return result; }
