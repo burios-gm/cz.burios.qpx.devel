@@ -1,0 +1,7 @@
+[{ 
+	"id": "default-fiori", "title": "Light" 
+}, { 
+	"id": "default-dark", "title": "Dark" 
+},{
+	"id": "default-office365", "title": "Office 365" 
+}]

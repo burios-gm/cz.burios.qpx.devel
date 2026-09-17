@@ -1,48 +1,24 @@
-<project name="cz.burios.qpx.devel" basedir="." default="archive.src">
+<project name="cz.burios.ux" basedir="." default="archive.src">
 
 	<property name="project.home" value="${basedir}" />
-	<property name="archive.home.default" value="e:/backup/projects/JS/github/vanburis/gmail/" />
-	<property name="archive.home.nb" value="d:/DATA/Google/Projekty/java/projects/github/vanburis/gmail/" />
-	<property name="archive.home.home" value="d:/DATA/Google/Projekty/java/projects/github/vanburis/gmail/" />
-	<property name="archive.home.work" value="c:/DATA/Google/Projekty/java/projects/github/vanburis/gmail/" />
+	<property name="archive.home" value="${user.home}\OneDrive\java\projects\github\fandyta\gmail" />
 	<property name="project.root.dir" value="${project.home}" />
-
+	<property name="project.name" value="cz.burios.ux" />
+	
 	<!-- Check timestamp on files -->
 	<target name="prepare">
 		<tstamp>
 			<format property="date" pattern="yyyyMMddHHmm" />
 		</tstamp>
 	</target>
-
-	<target name="archive.src" depends="prepare" description="Archivate source files">
-		<zip destfile="${archive.home.default}/cz.burios.qpx-devel-26.2-${date}.zip" basedir="${project.home}">
-			<exclude name=".project" />
-			<exclude name=".classpath" />
-			<exclude name=".git/**" />
-			<exclude name=".settings/**" />
-			<exclude name="node_modules/**" />
-			<exclude name="target/**" />
-		</zip>
-	</target>
-	<target name="archive.src.home" depends="prepare" description="Archivate source files">
-		<zip destfile="${archive.home.home}/cz.burios.qpx-devel-26.2-${date}.zip" basedir="${project.home}">
-			<exclude name=".project" />
-			<exclude name=".classpath" />
-			<exclude name=".git/**" />
-			<exclude name=".settings/**" />
-			<exclude name="node_modules/**" />
-			<exclude name="target/**" />
-		</zip>
-	</target>
-	<target name="archive.src.work" depends="prepare" description="Archivate source files">
-		<zip destfile="${archive.home.work}/cz.burios.qpx-devel-26.2-${date}.zip" basedir="${project.home}">
-			<exclude name=".project" />
-			<exclude name=".classpath" />
-			<exclude name=".git/**" />
-			<exclude name=".settings/**" />
-			<exclude name="node_modules/**" />
-			<exclude name="target/**" />
-		</zip>
-	</target>
 	
+	<target name="archive.src" depends="prepare" description="Archivate source files">
+		<zip destfile="${archive.home}/${project.name}-23.2-${date}.zip" basedir="${project.home}">
+			<exclude name="**/.project" />
+			<exclude name="**/.classpath" />
+			<exclude name="**/.git/**" />
+			<exclude name="**/.settings/**" />
+			<exclude name="**/target/**" />
+		</zip>
+	</target>
 </project>
