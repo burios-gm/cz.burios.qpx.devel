@@ -107,7 +107,10 @@ public class JpaMetaDataReaderTest {
     @Entity(name = "JpaIndexEntity")
     @Table(name = "qpx_jpa_index",
             indexes = @Index(name = "ix_qpx_code", columnList = "code"),
-            uniqueConstraints = @UniqueConstraint(name = "uk_qpx_external", columnNames = {"external_code"}))
+            uniqueConstraints = {
+                @UniqueConstraint(name = "uk_qpx_external", columnNames = {"external_code"}),
+                @UniqueConstraint(columnNames = {"name", "city"})
+            })
     public static class JpaIndexEntity {
         @Id
         @Column(name = "id", length = 20, nullable = false)
