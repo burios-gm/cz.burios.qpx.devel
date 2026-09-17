@@ -5,10 +5,14 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.Column;
+import jakarta.persistence.EmbeddedId;
+import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Id;
+import jakarta.persistence.IdClass;
 import jakarta.persistence.Index;
 import jakarta.persistence.Persistence;
 import jakarta.persistence.Table;
@@ -56,6 +60,56 @@ class JpaMetaDataReaderTest {
         }
     }
 
+    @Test
+    void readsEmbeddedIdAsCompositePrimaryKey() {
+        EntityManagerFactory emf = Persistence.createEntityManagerFactory("uniql-test");
+        try {
+            DBMetaData metadata = new JpaMetaDataReader().read(emf);
+            TableMetaData table = metadata.table("qpx_embedded_id");
+
+            assertNotNull(table);
+            assertEquals(2, table.columns.stream().filter(c -> c.primaryKey).count());
+
+            ColumnMetaData tenant = table.column("tenant_code");
+            assertNotNull(tenant);
+            assertTrue(tenant.primaryKey);
+            assertFalse(tenant.autoIncrement);
+            assertEquals(ColumnType.STRING, tenant.logicalType);
+            assertEquals(20, tenant.length);
+
+            ColumnMetaData number = table.column("order_no");
+            assertNotNull(number);
+            assertTrue(number.primaryKey);
+            assertFalse(number.autoIncrement);
+            assertEquals(ColumnType.STRING, number.logicalType);
+            assertEquals(20, number.length);
+        } finally {
+            emf.close();
+        }
+    }
+
+    @Test
+    void readsIdClassAsCompositePrimaryKey() {
+        EntityManagerFactory emf = Persistence.createEntityManagerFactory("uniql-test");
+        try {
+            DBMetaData metadata = new JpaMetaDataReader().read(emf);
+            TableMetaData table = metadata.table("qpx_id_class");
+
+            assertNotNull(table);
+            assertEquals(2, table.columns.stream().filter(c -> c.primaryKey).count());
+            for (String name : java.util.List.of("tenant_code", "order_no")) {
+                ColumnMetaData column = table.column(name);
+                assertNotNull(column);
+                assertTrue(column.primaryKey);
+                assertFalse(column.autoIncrement);
+                assertEquals(ColumnType.STRING, column.logicalType);
+                assertEquals(20, column.length);
+            }
+        } finally {
+            emf.close();
+        }
+    }
+
     @Entity(name = "StringIdEntity")
     @Table(name = "qpx_string_id")
     public static class StringIdEntity {
@@ -84,5 +138,48 @@ class JpaMetaDataReaderTest {
 
         @Column(name = "city", length = 100)
         private String city;
+    }
+
+    @Embeddable
+    public static class OrderId {
+        @Column(name = "tenant", length = 20, nullable = false)
+        private String tenant;
+
+        @Column(name = "number", length = 20, nullable = false)
+        private String number;
+    }
+
+    @Entity(name = "EmbeddedIdEntity")
+    @Table(name = "qpx_embedded_id")
+    @AttributeOverride(name = "id.tenant", column = @Column(name = "tenant_code", length = 20, nullable = false))
+    @AttributeOverride(name = "id.number", column = @Column(name = "order_no", length = 20, nullable = false))
+    public static class EmbeddedIdEntity {
+        @EmbeddedId
+        private OrderId id;
+    }
+
+    public static class IdClassKey {
+        private String tenant;
+        private String number;
+
+        public IdClassKey() {}
+
+        public IdClassKey(String tenant, String number) {
+            this.tenant = tenant;
+            this.number = number;
+        }
+    }
+
+    @Entity(name = "IdClassEntity")
+    @Table(name = "qpx_id_class")
+    @IdClass(IdClassKey.class)
+    public static class IdClassEntity {
+        @Id
+        @Column(name = "tenant_code", length = 20, nullable = false)
+        private String tenant;
+
+        @Id
+        @Column(name = "order_no", length = 20, nullable = false)
+        private String number;
     }
 }
