@@ -14,8 +14,11 @@ import java.time.ZonedDateTime;
 import java.util.Date;
 import java.util.UUID;
 
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.AttributeOverrides;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -56,6 +59,11 @@ public class JpaMetaDataReader {
         table.label(entity.getName());
 
         for (Attribute<?, ?> attribute : entity.getAttributes()) {
+            if (attribute.getPersistentAttributeType() == Attribute.PersistentAttributeType.EMBEDDED
+                    && annotation(findField(javaType, attribute.getName()), findGetter(javaType, attribute.getName()), EmbeddedId.class) != null) {
+                readEmbeddedId(table, javaType, attribute.getJavaType(), attribute.getName());
+                continue;
+            }
             if (attribute.getPersistentAttributeType() != Attribute.PersistentAttributeType.BASIC) continue;
             ColumnMetaData column = readColumn(javaType, attribute);
             if (column != null) table.addColumn(column);
@@ -81,6 +89,42 @@ public class JpaMetaDataReader {
             }
         }
         return table;
+    }
+
+    private void readEmbeddedId(TableMetaData table, Class<?> entityType, Class<?> embeddedType, String embeddedAttributeName) {
+        AttributeOverride[] overrides = attributeOverrides(entityType, embeddedAttributeName);
+        for (Field field : allFields(embeddedType)) {
+            if (java.lang.reflect.Modifier.isStatic(field.getModifiers())) continue;
+            if (annotation(field, findGetter(embeddedType, field.getName()), Column.class) == null
+                    && annotation(field, findGetter(embeddedType, field.getName()), Id.class) == null) {
+                // An EmbeddedId member is still a column even without @Column; use its Java name.
+            }
+            Column override = findOverride(overrides, field.getName());
+            ColumnMetaData column = readEmbeddedColumn(field, override);
+            if (column != null) table.addColumn(column);
+        }
+    }
+
+    private ColumnMetaData readEmbeddedColumn(Field field, Column override) {
+        Method getter = findGetter(field.getDeclaringClass(), field.getName());
+        Column annotation = annotation(field, getter, Column.class);
+        String columnName = override != null && !override.name().isBlank()
+                ? override.name()
+                : annotation != null && !annotation.name().isBlank() ? annotation.name() : field.getName();
+        ColumnMetaData column = new ColumnMetaData(columnName);
+        column.label(field.getName());
+        applyLogicalType(column, field.getType(), field, getter);
+        Column effective = override != null ? override : annotation;
+        if (effective != null) {
+            column.nullable(effective.nullable());
+            if (effective.length() > 0) column.length(effective.length());
+            if (effective.precision() > 0) column.precision(effective.precision());
+            if (effective.scale() > 0) column.scale(effective.scale());
+            if (!effective.columnDefinition().isBlank()) column.type(effective.columnDefinition());
+            column.unique = effective.unique();
+        }
+        column.primaryKey(true);
+        return column;
     }
 
     private ColumnMetaData readColumn(Class<?> entityType, Attribute<?, ?> attribute) {
@@ -128,6 +172,37 @@ public class JpaMetaDataReader {
             column.logicalType(enumerated != null && enumerated.value() == EnumType.ORDINAL ? ColumnType.INTEGER : ColumnType.STRING);
         } else if (javaType == UUID.class) column.logicalType(ColumnType.STRING).length(36);
         else column.logicalType(null);
+    }
+
+    private static AttributeOverride[] attributeOverrides(Class<?> entityType, String attributeName) {
+        AttributeOverrides overrides = entityType.getAnnotation(AttributeOverrides.class);
+        if (overrides != null) return filterOverrides(overrides.value(), attributeName);
+        AttributeOverride override = entityType.getAnnotation(AttributeOverride.class);
+        if (override != null && override.name().startsWith(attributeName + ".")) return new AttributeOverride[] { override };
+        return new AttributeOverride[0];
+    }
+
+    private static AttributeOverride[] filterOverrides(AttributeOverride[] overrides, String attributeName) {
+        java.util.List<AttributeOverride> result = new java.util.ArrayList<>();
+        String prefix = attributeName + ".";
+        for (AttributeOverride override : overrides) if (override.name().startsWith(prefix)) result.add(override);
+        return result.toArray(new AttributeOverride[0]);
+    }
+
+    private static Column findOverride(AttributeOverride[] overrides, String fieldName) {
+        String suffix = "." + fieldName;
+        for (AttributeOverride override : overrides) {
+            if (override.name().equals(fieldName) || override.name().endsWith(suffix)) return override.column();
+        }
+        return null;
+    }
+
+    private static Field[] allFields(Class<?> type) {
+        java.util.List<Field> result = new java.util.ArrayList<>();
+        for (Class<?> current = type; current != null && current != Object.class; current = current.getSuperclass()) {
+            for (Field field : current.getDeclaredFields()) result.add(field);
+        }
+        return result.toArray(new Field[0]);
     }
 
     private static String indexName(String explicitName, String tableName, String columns) {
