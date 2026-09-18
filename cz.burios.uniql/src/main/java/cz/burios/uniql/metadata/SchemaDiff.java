@@ -85,8 +85,6 @@ public final class SchemaDiff {
         List<String> sql = new ArrayList<>();
         for (SchemaChange change : changes) {
             sql.add(manager.sql(change));
-            if (change.type() == SchemaChange.Type.CREATE_TABLE)
-                for (IndexMetaData index : change.table().indexes) sql.add(manager.sql(SchemaChange.createIndex(change.table(), index)));
         }
         return Collections.unmodifiableList(sql);
     }
