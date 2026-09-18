@@ -1,6 +1,7 @@
 package cz.burios.uniql.sql;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -14,7 +15,7 @@ public final class QLSql implements QLVisitor {
     public static Result render(QLStatement s){return renderStatement(s);}
     public static Result renderExpr(QLExpr s){if(s==null)throw new IllegalArgumentException("expression must not be null");QLSql v=new QLSql();s.accept(v);return v.result();}
     public static Result renderStatement(QLStatement s){if(s==null)throw new IllegalArgumentException("statement must not be null");QLSql v=new QLSql();s.accept(v);return v.result();}
-    private Result result(){return new Result(sql.toString(),List.copyOf(parameters));}
+    private Result result(){return new Result(sql.toString(),Collections.unmodifiableList(new ArrayList<>(parameters)));}
     public record Result(String sql,List<Object> parameters){}
     private void expr(QLExpr e){if(e==null)throw new IllegalArgumentException("SQL expression must not be null");e.accept(this);}
     private static void identifier(String v,String kind){if(v==null||!IDENTIFIER.matcher(v).matches())throw new IllegalArgumentException("Invalid "+kind+": "+v);}
