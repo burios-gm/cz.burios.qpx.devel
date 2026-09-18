@@ -3,6 +3,7 @@ package cz.burios.uniql.metadata;
 import java.sql.Connection;
 import java.sql.DriverManager;
 
+import cz.burios.uniql.dialect.H2Dialect;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Persistence;
 
