@@ -1,6 +1,8 @@
 package cz.burios.uniql.sql;
 
 import cz.burios.uniql.model.BasicRecord;
+import cz.burios.uniql.model.DynamicRecord;
+import cz.burios.uniql.metadata.TableMetaData;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -44,6 +46,23 @@ public final class QLRowMapper {
         } catch (ReflectiveOperationException e) {
             throw new SQLException("Cannot map ResultSet to " + type.getName(), e);
         }
+    }
+
+    /** Maps rows to runtime records backed by the supplied table metadata. */
+    public static List<DynamicRecord> mapDynamic(ResultSet rs, TableMetaData table) throws SQLException {
+        if (table == null) throw new IllegalArgumentException("table metadata must not be null");
+        ResultSetMetaData meta = rs.getMetaData();
+        List<DynamicRecord> result = new ArrayList<>();
+        while (rs.next()) {
+            DynamicRecord row = new DynamicRecord(table);
+            for (int i = 1; i <= meta.getColumnCount(); i++) {
+                String label = meta.getColumnLabel(i);
+                String name = table.column(label) != null ? table.column(label).name : label;
+                row.put(name, rs.getObject(i));
+            }
+            result.add(row);
+        }
+        return result;
     }
 
     private static List<Field> mappedFields(Class<?> type) {
