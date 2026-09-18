@@ -92,6 +92,8 @@ public record DBSchemaMigrationApproval(String migrationId, String description, 
             case ALTER_TABLE_PARAMS -> SchemaChange.alterTableParams(requireTable(table, type));
             case CREATE_INDEX -> SchemaChange.createIndex(requireTable(table, type), readIndex(requireNode(node, "index", type)));
             case DROP_INDEX -> SchemaChange.dropIndex(requireTable(table, type), text(node, "indexName", true));
+            case DROP_PRIMARY_KEY -> SchemaChange.dropPrimaryKey(requireTable(table, type));
+            case CREATE_PRIMARY_KEY -> SchemaChange.createPrimaryKey(requireTable(table, type));
         };
     }
 
