@@ -11,6 +11,8 @@ public class TableMetaData {
     public String schema;
     public String name;
     public String label;
+    /** Database constraint name of the primary key, when known. */
+    public String primaryKeyName;
     public final List<ColumnMetaData> columns = new ArrayList<>();
     /** Non-primary indexes belonging to this table. */
     public final List<IndexMetaData> indexes = new ArrayList<>();
@@ -28,6 +30,7 @@ public class TableMetaData {
     public TableMetaData schema(String value) { this.schema = value; return this; }
     public TableMetaData name(String value) { this.name = value; return this; }
     public TableMetaData label(String value) { this.label = value; return this; }
+    public TableMetaData primaryKeyName(String value) { this.primaryKeyName = value; return this; }
     public TableMetaData param(String name, Object value) { params.put(name, value); return this; }
     public TableMetaData params(Map<String, Object> values) { if (values != null) params.putAll(values); return this; }
     public TableMetaData removeParam(String name) { params.remove(name); return this; }
