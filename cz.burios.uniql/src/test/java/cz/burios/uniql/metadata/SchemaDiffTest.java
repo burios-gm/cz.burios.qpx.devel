@@ -73,8 +73,8 @@ public class SchemaDiffTest {
         check(diff.changes().get(0).type() == SchemaChange.Type.CREATE_TABLE, "CREATE TABLE must be first");
         check(diff.changes().get(1).type() == SchemaChange.Type.CREATE_INDEX, "CREATE INDEX must be explicit");
         check(diff.toSQL(new H2Dialect()).equals(List.of(
-                "CREATE TABLE "customers" ("id" BIGINT NOT NULL, "email" VARCHAR(120) NOT NULL, PRIMARY KEY ("id"))",
-                "CREATE UNIQUE INDEX "uk_customers_email" ON "customers" ("email")"
+                "CREATE TABLE \"customers\" (\"id\" BIGINT NOT NULL, \"email\" VARCHAR(120) NOT NULL, PRIMARY KEY (\"id\"))",
+                "CREATE UNIQUE INDEX \"uk_customers_email\" ON \"customers\" (\"email\")"
         )), "new-table DDL must contain exactly one CREATE INDEX statement");
     }
 
