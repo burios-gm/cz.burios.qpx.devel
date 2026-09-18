@@ -26,6 +26,16 @@ public final class SchemaDiffTest {
         if (firstDiff.planHash().length() != 64)
             throw new AssertionError("Plan hash must be SHA-256 hex");
 
+        TableMetaData actualTable = new TableMetaData("STORE").database("UNIQL").schema("PUBLIC")
+                .addColumn(new ColumnMetaData("ID").type("BIGINT"));
+        TableMetaData desiredTable = new TableMetaData("store").schema("public")
+                .addColumn(new ColumnMetaData("id").type("BIGINT"));
+        DBMetaData actual = new DBMetaData().add(actualTable);
+        DBMetaData desired = new DBMetaData().add(desiredTable);
+        SchemaDiff namespaceDiff = SchemaDiff.compare(actual, desired, true);
+        if (namespaceDiff.changes().stream().anyMatch(c -> c.type() == SchemaChange.Type.DROP_TABLE))
+            throw new AssertionError("Case-insensitive schema matching must not drop an existing table");
+
         System.out.println("SchemaDiffTest: OK");
     }
 }
