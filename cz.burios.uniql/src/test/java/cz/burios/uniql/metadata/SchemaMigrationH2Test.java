@@ -27,7 +27,7 @@ public class SchemaMigrationH2Test {
                         "CREATE TABLE qpx_embedded_id (" +
                         "tenant_code VARCHAR(20) NOT NULL, " +
                         "order_no VARCHAR(20) NOT NULL, " +
-                        "PRIMARY KEY (order_no, tenant_code))");
+                        "CONSTRAINT pk_qpx_embedded_id PRIMARY KEY (order_no, tenant_code))");
             }
 
             EntityManagerFactory emf = Persistence.createEntityManagerFactory("uniql-test");
@@ -45,6 +45,15 @@ public class SchemaMigrationH2Test {
                         "first migration step must drop the existing primary key");
                 check(diff.changes().get(1).type() == SchemaChange.Type.CREATE_PRIMARY_KEY,
                         "second migration step must create the desired primary key");
+
+                // The table and columns were created unquoted, so H2 stores them
+                // in upper case. JPA metadata uses the lower-case logical names.
+                // Migration SQL must nevertheless use the physical JDBC names.
+                List<String> sql = diff.toSQL(new H2Dialect());
+                check(sql.equals(List.of(
+                        "ALTER TABLE \"PUBLIC\".\"QPX_EMBEDDED_ID\" DROP CONSTRAINT \"PK_QPX_EMBEDDED_ID\"",
+                        "ALTER TABLE \"PUBLIC\".\"QPX_EMBEDDED_ID\" ADD PRIMARY KEY (\"TENANT_CODE\", \"ORDER_NO\")"
+                )), "migration SQL must use physical H2 identifier casing: " + sql);
 
                 diff.apply(connection, new DBSchemaManager(new H2Dialect()));
 
