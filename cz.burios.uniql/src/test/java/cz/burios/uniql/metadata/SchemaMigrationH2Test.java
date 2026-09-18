@@ -54,10 +54,19 @@ public class SchemaMigrationH2Test {
 
                 List<String> pkColumns = migratedTable.columns.stream()
                         .filter(c -> c.primaryKey)
+                        .sorted(java.util.Comparator.comparingInt(c -> c.primaryKeyPosition))
                         .map(c -> c.name)
                         .toList();
                 check(pkColumns.equals(List.of("tenant_code", "order_no")),
-                        "migrated composite primary key has unexpected column order: " + pkColumns);
+                        "migrated composite primary key has unexpected KEY_SEQ order: " + pkColumns);
+
+                List<Short> pkPositions = migratedTable.columns.stream()
+                        .filter(c -> c.primaryKey)
+                        .map(c -> c.primaryKeyPosition)
+                        .sorted()
+                        .toList();
+                check(pkPositions.equals(List.of((short) 1, (short) 2)),
+                        "migrated composite primary key has unexpected KEY_SEQ values: " + pkPositions);
 
                 SchemaDiff verification = SchemaDiff.compare(migrated, desiredOnly);
                 check(verification.isEmpty(),
