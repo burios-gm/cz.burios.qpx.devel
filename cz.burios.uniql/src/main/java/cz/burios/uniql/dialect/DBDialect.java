@@ -31,6 +31,28 @@ public interface DBDialect {
     }
     default String tableOptions(TableMetaData table) { if (table.params.isEmpty()) return ""; StringBuilder sql = new StringBuilder(); for (var entry : table.params.entrySet()) { if (entry.getKey() == null || entry.getKey().isBlank()) throw new IllegalArgumentException("Table option name must not be blank"); if (entry.getValue() == null) continue; if (sql.length() > 0) sql.append(' '); sql.append(entry.getKey()).append('=').append(entry.getValue()); } return sql.length() == 0 ? "" : " " + sql; }
     default String alterTableOptions(TableMetaData table) { throw new UnsupportedOperationException("Table option alteration is not supported by dialect: " + name()); }
+    /** Renders a primary-key constraint using the name stored in table metadata. */
+    default String addPrimaryKey(TableMetaData table) {
+        String name = table.primaryKeyName;
+        StringBuilder sql = new StringBuilder("ALTER TABLE ").append(tableName(table)).append(" ADD ");
+        if (name != null && !name.isBlank()) sql.append("CONSTRAINT ").append(quote(name)).append(' ');
+        sql.append("PRIMARY KEY (");
+        boolean first = true;
+        for (ColumnMetaData column : table.columns) if (column.primaryKey) {
+            if (!first) sql.append(", ");
+            sql.append(columnName(column.name));
+            first = false;
+        }
+        if (first) throw new IllegalArgumentException("table has no primary-key columns");
+        return sql.append(')').toString();
+    }
+    /** Renders dropping the existing primary-key constraint. */
+    default String dropPrimaryKey(TableMetaData table) {
+        String name = table.primaryKeyName;
+        if (name == null || name.isBlank()) throw new IllegalArgumentException("primary-key constraint name is required");
+        return "ALTER TABLE " + tableName(table) + " DROP CONSTRAINT " + quote(name);
+    }
+
     default String alterColumn(TableMetaData table, ColumnMetaData column) { throw new UnsupportedOperationException("Column alteration is not supported by dialect: " + name()); }
     default List<String> alterColumnStatements(TableMetaData table, ColumnMetaData column) { return List.of(alterColumn(table, column)); }
     default String createIndex(TableMetaData table, IndexMetaData index) { if (index == null || index.name == null || index.name.isBlank()) throw new IllegalArgumentException("index is required"); if (index.columns.isEmpty()) throw new IllegalArgumentException("index must contain at least one column"); StringBuilder sql = new StringBuilder("CREATE "); if (index.unique) sql.append("UNIQUE "); sql.append("INDEX ").append(indexName(index.name)).append(" ON ").append(tableName(table)).append(" ("); for (int i = 0; i < index.columns.size(); i++) { if (i > 0) sql.append(", "); sql.append(columnName(index.columns.get(i))); } return sql.append(')').toString(); }
