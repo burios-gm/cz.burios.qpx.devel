@@ -86,6 +86,8 @@ public final class DSL {
             ColumnMetaData column=meta.column(entry.getKey());
             if(column == null) throw new IllegalArgumentException("Unknown column '"+entry.getKey()+"' for table "+meta.qualifiedName());
             if(column.autoIncrement || column.generation != null && column.generation != cz.burios.uniql.metadata.ColumnGeneration.NONE) continue;
+            // A null supplied for a column with a database default means "let the database generate it".
+            if(entry.getValue() == null && column.defaultValue != null && !column.defaultValue.isBlank()) continue;
             values.put(column.name, entry.getValue());
         }
         if(values.isEmpty()) throw new IllegalArgumentException("INSERT contains no writable columns for "+meta.qualifiedName());
