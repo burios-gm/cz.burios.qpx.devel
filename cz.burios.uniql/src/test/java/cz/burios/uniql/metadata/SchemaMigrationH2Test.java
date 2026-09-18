@@ -17,6 +17,7 @@ public class SchemaMigrationH2Test {
         SchemaMigrationH2Test test = new SchemaMigrationH2Test();
         test.migratesCompositePrimaryKeyFromActualJdbcMetadata();
         test.createsJPAIndexedTableFromEmptyDatabase();
+        test.altersExistingColumnTypeNullabilityAndDefault();
         System.out.println("SchemaMigrationH2Test: OK");
     }
 
@@ -53,6 +54,47 @@ public class SchemaMigrationH2Test {
             } finally {
                 emf.close();
             }
+        }
+    }
+
+    /** Verifies that H2 ALTER COLUMN applies type, nullability and default changes. */
+    public void altersExistingColumnTypeNullabilityAndDefault() throws Exception {
+        String url = "jdbc:h2:mem:uniql_schema_migration_alter;DB_CLOSE_DELAY=-1";
+        try (Connection connection = DriverManager.getConnection(url, "sa", "")) {
+            try (Statement statement = connection.createStatement()) {
+                statement.executeUpdate(
+                        "CREATE TABLE qpx_alter (id BIGINT NOT NULL, name VARCHAR(50) DEFAULT 'old')");
+            }
+
+            TableMetaData desiredTable = new TableMetaData("qpx_alter");
+            desiredTable.addColumn(new ColumnMetaData("id").longType().nullable(false));
+            desiredTable.addColumn(new ColumnMetaData("name").string(100).nullable(false).defaultValue("'new'"));
+            DBMetaData desired = new DBMetaData().add(desiredTable);
+
+            DBMetaData actual = DBMetaData.load(connection);
+            SchemaDiff diff = SchemaDiff.compare(actual, desired);
+            check(diff.size() == 1, "column definition change must produce one ALTER_COLUMN change");
+            check(diff.changes().get(0).type() == SchemaChange.Type.ALTER_COLUMN,
+                    "changed column must produce ALTER_COLUMN");
+
+            List<String> sql = diff.toSQL(new H2Dialect());
+            check(sql.size() == 1 && sql.get(0).contains("ALTER TABLE \"QPX_ALTER\" ALTER COLUMN \"NAME\""),
+                    "H2 ALTER_COLUMN must render as one logical migration change: " + sql);
+            check(sql.get(0).contains("VARCHAR(100)"),
+                    "H2 ALTER_COLUMN must contain the desired type: " + sql);
+
+            diff.apply(connection, new DBSchemaManager(new H2Dialect()));
+
+            TableMetaData migrated = DBMetaData.load(connection).table("qpx_alter");
+            ColumnMetaData name = migrated.columns.stream()
+                    .filter(column -> column.name.equalsIgnoreCase("name"))
+                    .findFirst().orElseThrow();
+            check(name.length == 100, "name column must be widened to VARCHAR(100)");
+            check(!name.nullable, "name column must become NOT NULL");
+            check("'new'".equals(name.defaultValue), "name column default must become 'new': " + name.defaultValue);
+
+            SchemaDiff verification = SchemaDiff.compare(DBMetaData.load(connection), desired);
+            check(verification.isEmpty(), "ALTER_COLUMN migration must leave an empty verification diff: " + verification);
         }
     }
 
