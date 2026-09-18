@@ -12,6 +12,7 @@ public class SchemaDiffTest {
         test.createsCompositePrimaryKeyInColumnOrder();
         test.detectsChangedUniqueIndexDefinition();
         test.createsSecondaryIndexesAsExplicitChanges();
+        test.detectsChangedCompositePrimaryKey();
         System.out.println("SchemaDiffTest: OK");
     }
 
@@ -30,6 +31,32 @@ public class SchemaDiffTest {
         check(diff.toSQL(new H2Dialect()).equals(List.of(
                 "CREATE TABLE \"orders\" (\"tenant_code\" VARCHAR(20) NOT NULL, \"order_no\" VARCHAR(20) NOT NULL, \"description\" VARCHAR(100), PRIMARY KEY (\"tenant_code\", \"order_no\"))"
         )), "composite primary-key SQL has unexpected column order or syntax");
+    }
+
+    public void detectsChangedCompositePrimaryKey() {
+        DBMetaData actual = new DBMetaData();
+        TableMetaData actualTable = new TableMetaData("orders").primaryKeyName("pk_orders");
+        actualTable.addColumn(new ColumnMetaData("tenant_code").string(20).nullable(false).primaryKey(true));
+        actualTable.addColumn(new ColumnMetaData("order_no").string(20).nullable(false).primaryKey(true));
+        actual.add(actualTable);
+
+        DBMetaData desired = new DBMetaData();
+        TableMetaData desiredTable = new TableMetaData("orders");
+        desiredTable.addColumn(new ColumnMetaData("tenant_code").string(20).nullable(false).primaryKey(true));
+        desiredTable.addColumn(new ColumnMetaData("order_no").string(20).nullable(false).primaryKey(true));
+        desiredTable.addColumn(new ColumnMetaData("version").longType().primaryKey(true));
+        desired.add(desiredTable);
+
+        SchemaDiff diff = SchemaDiff.compare(actual, desired);
+        check(diff.size() == 3, "changed composite primary key must produce DROP PK + ADD COLUMN + CREATE PK");
+        check(diff.changes().get(0).type() == SchemaChange.Type.DROP_PRIMARY_KEY, "DROP PRIMARY KEY must be first");
+        check(diff.changes().get(1).type() == SchemaChange.Type.ADD_COLUMN, "new PK column must be added before recreating PK");
+        check(diff.changes().get(2).type() == SchemaChange.Type.CREATE_PRIMARY_KEY, "CREATE PRIMARY KEY must be last");
+        check(diff.toSQL(new H2Dialect()).equals(List.of(
+                "ALTER TABLE \"orders\" DROP CONSTRAINT \"pk_orders\"",
+                "ALTER TABLE \"orders\" ADD COLUMN \"version\" BIGINT NOT NULL",
+                "ALTER TABLE \"orders\" ADD PRIMARY KEY (\"tenant_code\", \"order_no\", \"version\")"
+        )), "composite primary-key migration SQL is unexpected");
     }
 
     public void createsSecondaryIndexesAsExplicitChanges() {
