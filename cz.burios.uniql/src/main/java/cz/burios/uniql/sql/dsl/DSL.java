@@ -10,6 +10,7 @@ import java.sql.*;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.LinkedHashMap;
 
 /** Unified SQL-like fluent DSL facade for SELECT and CRUD statements. */
 public final class DSL {
@@ -79,7 +80,16 @@ public final class DSL {
         Class<? extends BasicRecord> type=recordType(r);String id=QLRecordMetadata.idColumn(type);return delete(c,QLRecordMetadata.table(type),r,id);
     }
     private static int insertDynamic(Connection c, DynamicRecord r)throws SQLException{
-        TableMetaData meta=requireMetadata(r); validateColumns(meta,r); return insertInto(meta.qualifiedName()).row(r).execute(c);
+        TableMetaData meta=requireMetadata(r); validateColumns(meta,r);
+        Map<String,Object> values=new LinkedHashMap<>();
+        for(Map.Entry<String,Object> entry:r.entrySet()) {
+            ColumnMetaData column=meta.column(entry.getKey());
+            if(column == null) throw new IllegalArgumentException("Unknown column '"+entry.getKey()+"' for table "+meta.qualifiedName());
+            if(column.autoIncrement || column.generation != null && column.generation != cz.burios.uniql.metadata.ColumnGeneration.NONE) continue;
+            values.put(column.name, entry.getValue());
+        }
+        if(values.isEmpty()) throw new IllegalArgumentException("INSERT contains no writable columns for "+meta.qualifiedName());
+        return insertInto(meta.qualifiedName()).row(values).execute(c);
     }
     private static int updateDynamic(Connection c, DynamicRecord r)throws SQLException{
         TableMetaData meta=requireMetadata(r); validateColumns(meta,r);
