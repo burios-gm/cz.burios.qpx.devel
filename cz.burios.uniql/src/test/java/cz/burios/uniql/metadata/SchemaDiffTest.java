@@ -11,6 +11,7 @@ public class SchemaDiffTest {
         SchemaDiffTest test = new SchemaDiffTest();
         test.createsCompositePrimaryKeyInColumnOrder();
         test.detectsChangedUniqueIndexDefinition();
+        test.createsSecondaryIndexesAsExplicitChanges();
         System.out.println("SchemaDiffTest: OK");
     }
 
@@ -29,6 +30,25 @@ public class SchemaDiffTest {
         check(diff.toSQL(new H2Dialect()).equals(List.of(
                 "CREATE TABLE \"orders\" (\"tenant_code\" VARCHAR(20) NOT NULL, \"order_no\" VARCHAR(20) NOT NULL, \"description\" VARCHAR(100), PRIMARY KEY (\"tenant_code\", \"order_no\"))"
         )), "composite primary-key SQL has unexpected column order or syntax");
+    }
+
+    public void createsSecondaryIndexesAsExplicitChanges() {
+        DBMetaData actual = new DBMetaData();
+        DBMetaData desired = new DBMetaData();
+        TableMetaData table = new TableMetaData("customers");
+        table.addColumn(new ColumnMetaData("id").longType().primaryKey(true));
+        table.addColumn(new ColumnMetaData("email").string(120).nullable(false));
+        table.addIndex(new IndexMetaData("uk_customers_email").unique(true).column("email"));
+        desired.add(table);
+
+        SchemaDiff diff = SchemaDiff.compare(actual, desired);
+        check(diff.size() == 2, "new table with one index must produce CREATE TABLE + CREATE INDEX");
+        check(diff.changes().get(0).type() == SchemaChange.Type.CREATE_TABLE, "CREATE TABLE must be first");
+        check(diff.changes().get(1).type() == SchemaChange.Type.CREATE_INDEX, "CREATE INDEX must be explicit");
+        check(diff.toSQL(new H2Dialect()).equals(List.of(
+                "CREATE TABLE "customers" ("id" BIGINT NOT NULL, "email" VARCHAR(120) NOT NULL, PRIMARY KEY ("id"))",
+                "CREATE UNIQUE INDEX "uk_customers_email" ON "customers" ("email")"
+        )), "new-table DDL must contain exactly one CREATE INDEX statement");
     }
 
     public void detectsChangedUniqueIndexDefinition() {
