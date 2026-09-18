@@ -60,8 +60,11 @@ public class TableMetaData {
         return result;
     }
     public String qualifiedName() {
-        if (database != null && !database.isBlank()) return database + "." + name;
+        // SQL dialects treat JDBC catalog and schema differently. For a connection-local
+        // table reference the schema is the first SQL namespace; use the catalog only
+        // when no schema is available (e.g. MySQL databases).
         if (schema != null && !schema.isBlank()) return schema + "." + name;
+        if (database != null && !database.isBlank()) return database + "." + name;
         return name;
     }
 }
