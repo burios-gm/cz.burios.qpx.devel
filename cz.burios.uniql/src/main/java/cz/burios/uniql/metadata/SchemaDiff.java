@@ -220,11 +220,55 @@ public final class SchemaDiff {
         result.schema = actual.schema;
         result.label = desired.label;
         result.primaryKeyName = desired.primaryKeyName;
-        result.columns.addAll(desired.columns);
-        result.indexes.addAll(desired.indexes);
+        // Keep desired definitions, but use the physical JDBC identifiers for
+        // columns and index column references that already exist. H2 (and other
+        // databases with case-sensitive quoted identifiers) otherwise treats
+        // "tenant_code" and "TENANT_CODE" as different identifiers.
+        Map<String, String> actualColumnNames = new LinkedHashMap<>();
+        for (ColumnMetaData column : actual.columns)
+            actualColumnNames.put(key(column.name), column.name);
+
+        for (ColumnMetaData column : desired.columns) {
+            String physicalName = actualColumnNames.get(key(column.name));
+            result.columns.add(copyColumn(column, physicalName == null ? column.name : physicalName));
+        }
+
+        for (IndexMetaData index : desired.indexes) {
+            IndexMetaData copy = new IndexMetaData(index.name)
+                    .unique(index.unique)
+                    .type(index.type)
+                    .method(index.method);
+            for (String column : index.columns) {
+                String physicalName = actualColumnNames.get(key(column));
+                copy.column(physicalName == null ? column : physicalName);
+            }
+            result.indexes.add(copy);
+        }
         result.params.putAll(desired.params);
         result.actualParams.putAll(actual.actualParams);
         return result;
+    }
+
+    private static ColumnMetaData copyColumn(ColumnMetaData source, String name) {
+        ColumnMetaData copy = new ColumnMetaData(name);
+        copy.label = source.label;
+        copy.type = source.type;
+        copy.logicalType = source.logicalType;
+        copy.jdbcType = source.jdbcType;
+        copy.jdbcTypeName = source.jdbcTypeName;
+        copy.length = source.length;
+        copy.precision = source.precision;
+        copy.scale = source.scale;
+        copy.collation = source.collation;
+        copy.nullable = source.nullable;
+        copy.primaryKey = source.primaryKey;
+        copy.primaryKeyPosition = source.primaryKeyPosition;
+        copy.autoIncrement = source.autoIncrement;
+        copy.unique = source.unique;
+        copy.ordinalPosition = source.ordinalPosition;
+        copy.defaultValue = source.defaultValue;
+        copy.generation = source.generation;
+        return copy;
     }
 
     private static void diffPrimaryKey(List<SchemaChange> result, TableMetaData actual, TableMetaData desired) {
