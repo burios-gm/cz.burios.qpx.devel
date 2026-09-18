@@ -64,6 +64,7 @@ public final class SchemaDiff {
                     result.add(SchemaChange.createIndex(wanted, index));
                 continue;
             }
+            diffPrimaryKey(result, existing, wanted);
             diffColumns(result, existing, wanted, includeDrops);
             diffIndexes(result, existing, wanted, includeDrops);
             if (!sameParams(existing, wanted)) result.add(SchemaChange.alterTableParams(wanted));
@@ -125,6 +126,8 @@ public final class SchemaDiff {
             case CREATE_INDEX -> manager.createIndex(connection, change.table(), change.index());
             case DROP_INDEX -> manager.dropIndex(connection, change.table(), change.indexName());
             case DROP_TABLE -> manager.dropTable(connection, change.table());
+            case DROP_PRIMARY_KEY -> manager.dropPrimaryKey(connection, change.table());
+            case CREATE_PRIMARY_KEY -> manager.createPrimaryKey(connection, change.table());
         }
     }
 
@@ -147,7 +150,9 @@ public final class SchemaDiff {
             case ADD_COLUMN -> 50;
             case ALTER_TABLE_PARAMS -> 60;
             case CREATE_INDEX -> 70;
+            case DROP_PRIMARY_KEY -> 20;
             case DROP_TABLE -> 80;
+            case CREATE_PRIMARY_KEY -> 75;
         };
     }
 
@@ -202,6 +207,22 @@ public final class SchemaDiff {
 
     private static boolean hasNamespace(TableMetaData table) {
         return (table.database != null && !table.database.isBlank()) || (table.schema != null && !table.schema.isBlank());
+    }
+
+    private static void diffPrimaryKey(List<SchemaChange> result, TableMetaData actual, TableMetaData desired) {
+        List<String> actualPk = primaryKeyColumns(actual);
+        List<String> desiredPk = primaryKeyColumns(desired);
+        if (actualPk.equals(desiredPk)) return;
+
+        if (!actualPk.isEmpty()) result.add(SchemaChange.dropPrimaryKey(actual));
+        if (!desiredPk.isEmpty()) result.add(SchemaChange.createPrimaryKey(desired));
+    }
+
+    private static List<String> primaryKeyColumns(TableMetaData table) {
+        List<String> result = new ArrayList<>();
+        for (ColumnMetaData column : table.columns)
+            if (column.primaryKey) result.add(column.name.toLowerCase(Locale.ROOT));
+        return result;
     }
 
     private static void diffColumns(List<SchemaChange> result, TableMetaData actual, TableMetaData desired, boolean includeDrops) {
