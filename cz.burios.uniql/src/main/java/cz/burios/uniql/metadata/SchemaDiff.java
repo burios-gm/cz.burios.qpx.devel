@@ -64,10 +64,11 @@ public final class SchemaDiff {
                     result.add(SchemaChange.createIndex(wanted, index));
                 continue;
             }
-            diffPrimaryKey(result, existing, wanted);
-            diffColumns(result, existing, wanted, includeDrops);
-            diffIndexes(result, existing, wanted, includeDrops);
-            if (!sameParams(existing, wanted)) result.add(SchemaChange.alterTableParams(wanted));
+            TableMetaData target = migrationTable(existing, wanted);
+            diffPrimaryKey(result, existing, target);
+            diffColumns(result, existing, target, includeDrops);
+            diffIndexes(result, existing, target, includeDrops);
+            if (!sameParams(existing, wanted)) result.add(SchemaChange.alterTableParams(target));
         }
         if (includeDrops) for (TableMetaData existing : actual.tables.values())
             if (!representedByDesired(existing, desiredTables, desired.tables.values())) result.add(SchemaChange.dropTable(existing));
@@ -205,6 +206,25 @@ public final class SchemaDiff {
 
     private static boolean hasNamespace(TableMetaData table) {
         return (table.database != null && !table.database.isBlank()) || (table.schema != null && !table.schema.isBlank());
+    }
+
+    /**
+     * Builds metadata for executable changes on an already existing table.
+     * Desired columns/indexes/options are retained, while the physical table
+     * identifier comes from JDBC metadata. This preserves actual identifier
+     * casing on databases where quoted identifiers are case-sensitive.
+     */
+    private static TableMetaData migrationTable(TableMetaData actual, TableMetaData desired) {
+        TableMetaData result = new TableMetaData(actual.name);
+        result.database = actual.database;
+        result.schema = actual.schema;
+        result.label = desired.label;
+        result.primaryKeyName = desired.primaryKeyName;
+        result.columns.addAll(desired.columns);
+        result.indexes.addAll(desired.indexes);
+        result.params.putAll(desired.params);
+        result.actualParams.putAll(actual.actualParams);
+        return result;
     }
 
     private static void diffPrimaryKey(List<SchemaChange> result, TableMetaData actual, TableMetaData desired) {
