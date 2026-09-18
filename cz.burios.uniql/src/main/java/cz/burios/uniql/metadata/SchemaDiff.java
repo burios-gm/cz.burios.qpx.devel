@@ -217,9 +217,15 @@ public final class SchemaDiff {
     }
 
     private static List<String> primaryKeyColumns(TableMetaData table) {
-        List<String> result = new ArrayList<>();
+        List<ColumnMetaData> primaryKeys = new ArrayList<>();
         for (ColumnMetaData column : table.columns)
-            if (column.primaryKey) result.add(column.name.toLowerCase(Locale.ROOT));
+            if (column.primaryKey) primaryKeys.add(column);
+        boolean hasJdbcSequence = primaryKeys.stream().anyMatch(column -> column.primaryKeyPosition > 0);
+        if (hasJdbcSequence)
+            primaryKeys.sort(Comparator.comparingInt(column -> column.primaryKeyPosition));
+        List<String> result = new ArrayList<>(primaryKeys.size());
+        for (ColumnMetaData column : primaryKeys)
+            result.add(column.name.toLowerCase(Locale.ROOT));
         return result;
     }
 
