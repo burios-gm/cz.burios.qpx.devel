@@ -56,7 +56,14 @@ public final class SchemaDiff {
         Map<String, TableMetaData> desiredTables = indexTables(desired.tables);
         for (TableMetaData wanted : desired.tables.values()) {
             TableMetaData existing = findActualTable(actualTables, actual.tables.values(), wanted);
-            if (existing == null) { result.add(SchemaChange.createTable(wanted)); continue; }
+            if (existing == null) {
+                result.add(SchemaChange.createTable(wanted));
+                // Indexes are explicit migration changes, so CREATE TABLE itself has
+                // no hidden side effects. This also makes toSQL() and apply() equivalent.
+                for (IndexMetaData index : wanted.indexes)
+                    result.add(SchemaChange.createIndex(wanted, index));
+                continue;
+            }
             diffColumns(result, existing, wanted, includeDrops);
             diffIndexes(result, existing, wanted, includeDrops);
             if (!sameParams(existing, wanted)) result.add(SchemaChange.alterTableParams(wanted));
