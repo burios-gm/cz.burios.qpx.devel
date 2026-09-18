@@ -15,6 +15,26 @@ public final class DBSchemaMigrator {
     public SchemaMigrationHistory history() { return history; }
 
     public SchemaDiff plan(Connection connection, DBMetaData desired) throws SQLException { return plan(connection, desired, false); }
+    /** Plans a schema migration directly from the JPA persistence-unit metadata. */
+    public SchemaDiff plan(Connection connection, jakarta.persistence.EntityManagerFactory entityManagerFactory) throws SQLException {
+        return plan(connection, new JpaMetaDataReader().read(entityManagerFactory));
+    }
+
+    /** Plans a schema migration directly from JPA metadata with optional destructive changes. */
+    public SchemaDiff plan(Connection connection, jakarta.persistence.EntityManagerFactory entityManagerFactory, boolean includeDrops) throws SQLException {
+        return plan(connection, new JpaMetaDataReader().read(entityManagerFactory), includeDrops);
+    }
+
+    /** Applies a schema migration whose desired state is read from a JPA persistence unit. */
+    public SchemaDiff migrate(Connection connection, jakarta.persistence.EntityManagerFactory entityManagerFactory) throws SQLException {
+        return migrate(connection, new JpaMetaDataReader().read(entityManagerFactory));
+    }
+
+    /** Applies a schema migration whose desired state is read from JPA metadata. */
+    public SchemaDiff migrate(Connection connection, jakarta.persistence.EntityManagerFactory entityManagerFactory, boolean includeDrops) throws SQLException {
+        return migrate(connection, new JpaMetaDataReader().read(entityManagerFactory), includeDrops);
+    }
+
     public SchemaDiff plan(Connection connection, DBMetaData desired, boolean includeDrops) throws SQLException {
         requireConnection(connection);
         if (desired == null) throw new IllegalArgumentException("desired metadata must not be null");
