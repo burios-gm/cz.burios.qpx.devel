@@ -63,7 +63,7 @@ public class SchemaDiffTest {
         DBMetaData actual = new DBMetaData();
         DBMetaData desired = new DBMetaData();
         TableMetaData table = new TableMetaData("customers");
-        table.addColumn(new ColumnMetaData("id").longType().primaryKey(true));
+        table.addColumn(new ColumnMetaData("id").longType().nullable(false).primaryKey(true));
         table.addColumn(new ColumnMetaData("email").string(120).nullable(false));
         table.addIndex(new IndexMetaData("uk_customers_email").unique(true).column("email"));
         desired.add(table);
