@@ -19,6 +19,7 @@ public final class DSL {
     public static Select select(String... columnNames) { Select b=new Select(); if(columnNames!=null)for(String n:columnNames)b.select.columns.add(col(n)); return b; }
     public static Select select() { return new Select(); }
     public static Select select(Class<? extends BasicRecord> type) { return select().from(QLRecordMetadata.table(type)); }
+    public static Select select(TableMetaData table) { if (table == null) throw new IllegalArgumentException("table metadata must not be null"); return select().from(table); }
 
     public static QLSchema schema(String database, String table) { return new QLSchema(database, table); }
     public static QLSchema schema(String database, String table, String column) { return new QLSchema(database, table, column); }
@@ -81,18 +82,31 @@ public final class DSL {
         TableMetaData meta=requireMetadata(r); validateColumns(meta,r); return insertInto(meta.qualifiedName()).row(r).execute(c);
     }
     private static int updateDynamic(Connection c, DynamicRecord r)throws SQLException{
-        TableMetaData meta=requireMetadata(r); validateColumns(meta,r); ColumnMetaData key=meta.primaryKey();
-        if(key==null)throw new IllegalArgumentException("No primary key metadata for "+meta.qualifiedName());
-        Object value=r.get(key.name); if(value==null)throw new IllegalArgumentException("record key must not be null: "+key.name);
-        Update u=update(meta.qualifiedName()).where(col(key.name).eq(value));
-        for(Map.Entry<String,Object> e:r.entrySet())if(!key.name.equalsIgnoreCase(e.getKey()))u.set(e.getKey(),e.getValue());
+        TableMetaData meta=requireMetadata(r); validateColumns(meta,r);
+        Update u=update(meta.qualifiedName()).where(primaryKeyWhere(meta,r));
+        for(Map.Entry<String,Object> e:r.entrySet()) {
+            boolean pk=false;
+            for(ColumnMetaData key:meta.primaryKeys()) if(key.name.equalsIgnoreCase(e.getKey())) { pk=true; break; }
+            if(!pk) u.set(e.getKey(),e.getValue());
+        }
         return u.execute(c);
     }
     private static int deleteDynamic(Connection c, DynamicRecord r)throws SQLException{
-        TableMetaData meta=requireMetadata(r); validateColumns(meta,r); ColumnMetaData key=meta.primaryKey();
-        if(key==null)throw new IllegalArgumentException("No primary key metadata for "+meta.qualifiedName());
-        Object value=r.get(key.name); if(value==null)throw new IllegalArgumentException("record key must not be null: "+key.name);
-        return deleteFrom(meta.qualifiedName()).where(col(key.name).eq(value)).execute(c);
+        TableMetaData meta=requireMetadata(r); validateColumns(meta,r);
+        return deleteFrom(meta.qualifiedName()).where(primaryKeyWhere(meta,r)).execute(c);
+    }
+
+    private static QLExpr primaryKeyWhere(TableMetaData meta, DynamicRecord r) {
+        List<ColumnMetaData> keys=meta.primaryKeys();
+        if(keys.isEmpty()) throw new IllegalArgumentException("No primary key metadata for "+meta.qualifiedName());
+        QLExpr where=null;
+        for(ColumnMetaData key:keys) {
+            Object value=r.get(key.name);
+            if(value==null) throw new IllegalArgumentException("record key must not be null: "+key.name);
+            QLCondition condition=col(key.name).eq(value);
+            where=where==null?condition:new QLLogical("AND",where,condition);
+        }
+        return where;
     }
     private static TableMetaData requireMetadata(DynamicRecord r){if(r.getTableMetaData()==null)throw new IllegalArgumentException("DynamicRecord table metadata must not be null");return r.getTableMetaData();}
     private static void validateColumns(TableMetaData meta,BasicRecord r){for(String name:r.keySet())if(meta.column(name)==null)throw new IllegalArgumentException("Unknown column '"+name+"' for table "+meta.qualifiedName());}
@@ -108,7 +122,7 @@ public final class DSL {
         public Select columns(QLExpr... e){if(e!=null)select.columns.addAll(Arrays.asList(e));return this;} public Select columns(String... e){if(e!=null)for(String n:e)column(n);return this;}
         public Select distinct(){select.distinct=true;return this;}
         public Select from(QLExpr s){select.from=s;return this;} public Select from(String n){return from(table(n));} public Select from(QLSchema s){return from(table(s));}
-        public Select from(Class<? extends BasicRecord> type){return from(QLRecordMetadata.table(type));}
+        public Select from(Class<? extends BasicRecord> type){return from(QLRecordMetadata.table(type));} public Select from(TableMetaData table){if(table==null)throw new IllegalArgumentException("table metadata must not be null");return from(table.qualifiedName());}
         public Select from(QLSelect s){return from(new QLSubSelect(s));} public Select from(QLSelect s,String alias){return from(new QLSubSelect(s,alias));}
         public Select join(QLExpr s,QLExpr on){return join("INNER",s,on);} public Select join(String t,QLExpr s,QLExpr on){select.joins.add(new QLJoin(t,s,on));return this;}
         public Select join(String table,QLExpr on){return join("INNER",table(table),on);} public Select join(String type,String table,QLExpr on){return join(type,table(table),on);}
@@ -126,6 +140,8 @@ public final class DSL {
         public List<BasicRecord> list(Connection c)throws SQLException{return execute(c,BasicRecord.class);} public <T extends BasicRecord>List<T> list(Connection c,Class<T> t)throws SQLException{return execute(c,t);}
         public <T extends BasicRecord>T one(Connection c,Class<T> t)throws SQLException{List<T> r=execute(c,t);if(r.isEmpty())return null;if(r.size()>1)throw new SQLException("Expected one row, got "+r.size());return r.get(0);}
         public <T extends BasicRecord>List<T> execute(Connection c,Class<T> t)throws SQLException{if(c==null)throw new IllegalArgumentException("connection must not be null");QLSql.Result r=sql();try(PreparedStatement s=c.prepareStatement(r.sql())){bind(s,r);try(ResultSet rs=s.executeQuery()){return QLRowMapper.map(rs,t);}}}
+        public List<DynamicRecord> list(Connection c,TableMetaData table)throws SQLException{if(table==null)throw new IllegalArgumentException("table metadata must not be null");if(c==null)throw new IllegalArgumentException("connection must not be null");QLSql.Result r=sql();try(PreparedStatement s=c.prepareStatement(r.sql())){bind(s,r);try(ResultSet rs=s.executeQuery()){return QLRowMapper.mapDynamic(rs,table);}}}
+        public DynamicRecord one(Connection c,TableMetaData table)throws SQLException{List<DynamicRecord> r=list(c,table);if(r.isEmpty())return null;if(r.size()>1)throw new SQLException("Expected one row, got "+r.size());return r.get(0);}
     }
 
     public static final class Insert { private final QLInsert statement; private Insert(String t){statement=new QLInsert(new QLTable(t));} private Insert(QLSchema s){statement=new QLInsert(new QLTable(s));} public Insert columns(String... c){statement.columns(c);return this;} public Insert values(Object... v){statement.values(v);return this;} public Insert row(Map<String,?> v){statement.row(v);return this;} public QLInsert build(){return statement;} public QLSql.Result sql(){return QLSql.render(statement);} public int execute(Connection c)throws SQLException{return executeUpdate(c,sql());} }
