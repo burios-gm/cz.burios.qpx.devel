@@ -12,7 +12,9 @@ public final class SchemaChange {
         DROP_COLUMN,
         ALTER_TABLE_PARAMS,
         CREATE_INDEX,
-        DROP_INDEX
+        DROP_INDEX,
+        DROP_PRIMARY_KEY,
+        CREATE_PRIMARY_KEY
     }
 
     private final Type type;
@@ -40,6 +42,8 @@ public final class SchemaChange {
     public static SchemaChange alterTableParams(TableMetaData table) { return new SchemaChange(Type.ALTER_TABLE_PARAMS, table, null, null, null, null); }
     public static SchemaChange createIndex(TableMetaData table, IndexMetaData index) { return new SchemaChange(Type.CREATE_INDEX, table, null, null, index, null); }
     public static SchemaChange dropIndex(TableMetaData table, String indexName) { return new SchemaChange(Type.DROP_INDEX, table, null, null, null, indexName); }
+    public static SchemaChange dropPrimaryKey(TableMetaData table) { return new SchemaChange(Type.DROP_PRIMARY_KEY, table, null, null, null, null); }
+    public static SchemaChange createPrimaryKey(TableMetaData table) { return new SchemaChange(Type.CREATE_PRIMARY_KEY, table, null, null, null, null); }
 
     public Type type() { return type; }
     public TableMetaData table() { return table; }
@@ -66,6 +70,8 @@ public final class SchemaChange {
             case ALTER_TABLE_PARAMS -> "ALTER_TABLE_PARAMS " + table.name;
             case CREATE_INDEX -> "CREATE_INDEX " + table.name + "." + index.name;
             case DROP_INDEX -> "DROP_INDEX " + table.name + "." + indexName;
+            case DROP_PRIMARY_KEY -> "DROP_PRIMARY_KEY " + table.name;
+            case CREATE_PRIMARY_KEY -> "CREATE_PRIMARY_KEY " + table.name;
         };
     }
 }
