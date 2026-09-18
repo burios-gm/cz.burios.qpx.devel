@@ -13,8 +13,9 @@ public class DBSchemaManager {
     public DBDialect dialect() { return dialect; }
 
     public void createTable(Connection connection, TableMetaData table) throws SQLException {
+        // Secondary indexes are separate SchemaChange entries. Keeping CREATE TABLE
+        // side-effect free makes SchemaDiff.toSQL() exactly match SchemaDiff.apply().
         execute(connection, createTableSql(table));
-        for (IndexMetaData index : table.indexes) createIndex(connection, table, index);
     }
 
     public void addColumn(Connection c, TableMetaData t, ColumnMetaData col) throws SQLException { require(t); require(col); execute(c, addColumnSql(t, col)); }
