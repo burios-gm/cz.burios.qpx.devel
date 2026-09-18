@@ -184,15 +184,28 @@ public final class SchemaDiff {
     private static TableMetaData findActualTable(Map<String, TableMetaData> exactActual,
                                                   Iterable<TableMetaData> actualTables,
                                                   TableMetaData desired) {
-        if (hasNamespace(desired)) return exactActual.get(key(desired));
         TableMetaData found = null;
         for (TableMetaData candidate : actualTables) {
-            if (!equalIgnoreCase(candidate.name, desired.name)) continue;
+            if (!matchesNamespace(candidate, desired)) continue;
             if (found != null)
-                throw new IllegalArgumentException("ambiguous desired table without catalog/schema: " + desired.name);
+                throw new IllegalArgumentException("ambiguous desired table namespace: " + desired.name);
             found = candidate;
         }
         return found;
+    }
+
+    private static boolean matchesNamespace(TableMetaData actual, TableMetaData desired) {
+        if (!equalIgnoreCase(actual.name, desired.name)) return false;
+        // A specified schema identifies the SQL namespace. The JDBC catalog may be
+        // populated by the connection even when the desired metadata intentionally
+        // leaves catalog/database unspecified.
+        if (desired.schema != null && !desired.schema.isBlank())
+            return equalIgnoreCase(actual.schema, desired.schema)
+                    && (desired.database == null || desired.database.isBlank()
+                        || equalIgnoreCase(actual.database, desired.database));
+        if (desired.database != null && !desired.database.isBlank())
+            return equalIgnoreCase(actual.database, desired.database);
+        return true;
     }
 
     private static boolean representedByDesired(TableMetaData actual,
