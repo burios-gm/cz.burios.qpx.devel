@@ -28,6 +28,8 @@ public class DBSchemaManager {
     public void alterTableParams(Connection c, TableMetaData t) throws SQLException { require(t); String sql = dialect.alterTableOptions(t); if (sql != null && !sql.isBlank()) execute(c, sql); }
     public void createIndex(Connection c, TableMetaData t, IndexMetaData index) throws SQLException { require(t); execute(c, createIndexSql(t, index)); }
     public void dropIndex(Connection c, TableMetaData t, String name) throws SQLException { require(t); execute(c, dropIndexSql(t, name)); }
+    public void dropPrimaryKey(Connection c, TableMetaData t) throws SQLException { require(t); execute(c, dialect.dropPrimaryKey(t)); }
+    public void createPrimaryKey(Connection c, TableMetaData t) throws SQLException { require(t); execute(c, dialect.addPrimaryKey(t)); }
 
     /** Renders one change exactly as this manager would execute it. */
     public String sql(SchemaChange change) {
@@ -41,6 +43,8 @@ public class DBSchemaManager {
             case ALTER_TABLE_PARAMS -> dialect.alterTableOptions(change.table());
             case CREATE_INDEX -> createIndexSql(change.table(), change.index());
             case DROP_INDEX -> dropIndexSql(change.table(), change.indexName());
+            case DROP_PRIMARY_KEY -> dialect.dropPrimaryKey(change.table());
+            case CREATE_PRIMARY_KEY -> dialect.addPrimaryKey(change.table());
         };
     }
 
