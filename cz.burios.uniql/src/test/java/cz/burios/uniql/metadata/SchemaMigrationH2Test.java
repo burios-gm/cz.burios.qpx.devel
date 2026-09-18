@@ -16,7 +16,44 @@ public class SchemaMigrationH2Test {
     public static void main(String[] args) throws Exception {
         SchemaMigrationH2Test test = new SchemaMigrationH2Test();
         test.migratesCompositePrimaryKeyFromActualJdbcMetadata();
+        test.createsJPAIndexedTableFromEmptyDatabase();
         System.out.println("SchemaMigrationH2Test: OK");
+    }
+
+    /** Verifies the complete JPA -> desired metadata -> DDL -> JDBC round trip for a new table. */
+    public void createsJPAIndexedTableFromEmptyDatabase() throws Exception {
+        String url = "jdbc:h2:mem:uniql_schema_migration_create;DB_CLOSE_DELAY=-1";
+        try (Connection connection = DriverManager.getConnection(url, "sa", "")) {
+            EntityManagerFactory emf = Persistence.createEntityManagerFactory("uniql-test");
+            try {
+                TableMetaData desiredTable = new JpaMetaDataReader().read(emf).table("qpx_jpa_index");
+                check(desiredTable != null, "JPA desired metadata must contain qpx_jpa_index");
+                DBMetaData desired = new DBMetaData().add(desiredTable);
+
+                DBMetaData actual = DBMetaData.load(connection);
+                check(actual.table("qpx_jpa_index") == null, "test database must start without qpx_jpa_index");
+
+                SchemaDiff diff = SchemaDiff.compare(actual, desired);
+                check(!diff.isEmpty(), "missing JPA table must produce a migration");
+                check(diff.changes().get(0).type() == SchemaChange.Type.CREATE_TABLE,
+                        "new table migration must start with CREATE TABLE");
+                long createIndexes = diff.changes().stream()
+                        .filter(change -> change.type() == SchemaChange.Type.CREATE_INDEX)
+                        .count();
+                check(createIndexes == desiredTable.indexes.size(),
+                        "all JPA secondary indexes must be explicit migration changes");
+
+                diff.apply(connection, new DBSchemaManager(new H2Dialect()));
+
+                DBMetaData migrated = DBMetaData.load(connection);
+                check(migrated.table("qpx_jpa_index") != null, "JPA table must exist after migration");
+                SchemaDiff verification = SchemaDiff.compare(migrated, desired);
+                check(verification.isEmpty(),
+                        "JPA-created table must match its JDBC metadata after migration: " + verification);
+            } finally {
+                emf.close();
+            }
+        }
     }
 
     public void migratesCompositePrimaryKeyFromActualJdbcMetadata() throws Exception {
