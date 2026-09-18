@@ -213,7 +213,7 @@ public final class SchemaDiff {
                                                   Iterable<TableMetaData> desiredTables) {
         if (exactDesired.containsKey(key(actual))) return true;
         for (TableMetaData desired : desiredTables)
-            if (!hasNamespace(desired) && equalIgnoreCase(actual.name, desired.name)) return true;
+            if (matchesNamespace(actual, desired)) return true;
         return false;
     }
 
