@@ -50,6 +50,15 @@ public class TableMetaData {
         for (ColumnMetaData c : columns) if (c.primaryKey) return c;
         return null;
     }
+
+    /** Returns all primary-key columns in their JDBC KEY_SEQ order when known. */
+    public List<ColumnMetaData> primaryKeys() {
+        List<ColumnMetaData> result = new ArrayList<>();
+        for (ColumnMetaData c : columns) if (c.primaryKey) result.add(c);
+        boolean hasPositions = result.stream().anyMatch(c -> c.primaryKeyPosition > 0);
+        if (hasPositions) result.sort(java.util.Comparator.comparingInt(c -> c.primaryKeyPosition));
+        return result;
+    }
     public String qualifiedName() {
         if (database != null && !database.isBlank()) return database + "." + name;
         if (schema != null && !schema.isBlank()) return schema + "." + name;
