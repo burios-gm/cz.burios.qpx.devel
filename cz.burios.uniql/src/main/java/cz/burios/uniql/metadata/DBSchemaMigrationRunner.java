@@ -52,9 +52,18 @@ public final class DBSchemaMigrationRunner {
         List<SchemaMigrationHistory.Entry> entries = history().list(connection);
         for (DBSchemaMigration migration : migrations) {
             SchemaMigrationHistory.Entry entry = findEntry(entries, migration.id());
-            if (entry != null && entry.status() == SchemaMigrationHistory.Status.APPLIED) continue;
+            if (entry != null && entry.status() == SchemaMigrationHistory.Status.APPLIED) {
+                source = migration.desired();
+                continue;
+            }
             SchemaDiff diff = SchemaDiff.compare(source, migration.desired(), migration.includeDrops());
             result.add(DBSchemaMigrationPlan.from(migration, diff, source.fingerprint()));
+            // Declared migrations represent successive desired states. A later
+            // pending migration must therefore be planned against the state that
+            // the preceding migration will leave behind, not the original JDBC
+            // state. This also makes its sourceHash usable for approval after
+            // the preceding migration has been applied.
+            source = migration.desired();
         }
         return Collections.unmodifiableList(result);
     }
