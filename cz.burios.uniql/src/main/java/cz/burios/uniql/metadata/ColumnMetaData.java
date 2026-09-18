@@ -20,6 +20,8 @@ public class ColumnMetaData {
     public String collation;
     public boolean nullable = true;
     public boolean primaryKey;
+    /** Position of this column within the primary key (JDBC KEY_SEQ), when known. */
+    public short primaryKeyPosition;
     public boolean autoIncrement;
     /** Whether the column is required to be unique. */
     public boolean unique;
@@ -57,6 +59,7 @@ public class ColumnMetaData {
     public ColumnMetaData collation(String value) { this.collation = value; return this; }
     public ColumnMetaData nullable(boolean value) { this.nullable = value; return this; }
     public ColumnMetaData primaryKey(boolean value) { this.primaryKey = value; return this; }
+    public ColumnMetaData primaryKeyPosition(int value) { if (value < 0 || value > Short.MAX_VALUE) throw new IllegalArgumentException("primaryKeyPosition out of range"); this.primaryKeyPosition = (short) value; return this; }
     public ColumnMetaData autoIncrement(boolean value) { this.autoIncrement = value; return this; }
     public ColumnMetaData unique(boolean value) { this.unique = value; return this; }
     public ColumnMetaData ordinalPosition(int value) { this.ordinalPosition = value; return this; }
