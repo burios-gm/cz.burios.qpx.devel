@@ -66,6 +66,52 @@ public class DBMetaData {
         }
         return result;
     }
+    /** Loads metadata for one physical table without scanning the complete database catalog. */
+    public static TableMetaData loadTable(Connection connection, String tableName) throws SQLException {
+        if (connection == null) throw new IllegalArgumentException("connection must not be null");
+        if (tableName == null || tableName.isBlank()) throw new IllegalArgumentException("tableName must not be blank");
+        DBDialect dialect = DBDialects.forConnection(connection);
+        DatabaseMetaData db = connection.getMetaData();
+        String catalog = dialect.catalog(connection);
+        String schema = dialect.schema(connection);
+        TableMetaData result = null;
+        try (ResultSet tables = db.getTables(catalog, schema, tableName, new String[] {"TABLE"})) {
+            while (tables.next()) {
+                String physicalSchema = tables.getString("TABLE_SCHEM");
+                String physicalName = tables.getString("TABLE_NAME");
+                if (!physicalName.equalsIgnoreCase(tableName)) continue;
+                if (result != null) throw new SQLException("More than one table matches: " + tableName);
+                result = new TableMetaData(physicalName).schema(physicalSchema).database(catalog);
+                loadColumns(db, connection, dialect, catalog, physicalSchema, physicalName, result);
+                loadIndexes(db, connection, dialect, catalog, physicalSchema, physicalName, result);
+                dialect.loadTableOptions(connection, catalog, physicalSchema, result);
+            }
+        }
+        return result;
+    }
+
+    /** Loads metadata for one physical table in an explicitly selected schema. */
+    public static TableMetaData loadTable(Connection connection, String schema, String tableName) throws SQLException {
+        if (connection == null) throw new IllegalArgumentException("connection must not be null");
+        if (tableName == null || tableName.isBlank()) throw new IllegalArgumentException("tableName must not be blank");
+        DBDialect dialect = DBDialects.forConnection(connection);
+        DatabaseMetaData db = connection.getMetaData();
+        String catalog = dialect.catalog(connection);
+        try (ResultSet tables = db.getTables(catalog, schema, tableName, new String[] {"TABLE"})) {
+            while (tables.next()) {
+                String physicalSchema = tables.getString("TABLE_SCHEM");
+                String physicalName = tables.getString("TABLE_NAME");
+                if (!physicalName.equalsIgnoreCase(tableName)) continue;
+                TableMetaData result = new TableMetaData(physicalName).schema(physicalSchema).database(catalog);
+                loadColumns(db, connection, dialect, catalog, physicalSchema, physicalName, result);
+                loadIndexes(db, connection, dialect, catalog, physicalSchema, physicalName, result);
+                dialect.loadTableOptions(connection, catalog, physicalSchema, result);
+                return result;
+            }
+        }
+        return null;
+    }
+
     private static void loadColumns(DatabaseMetaData db, Connection connection, DBDialect dialect, String catalog, String schema, String tableName, TableMetaData table) throws SQLException {
         Map<String, ColumnMetaData> columns = new LinkedHashMap<>();
         try (ResultSet rs = db.getColumns(catalog, schema, tableName, "%")) { while (rs.next()) { ColumnMetaData c = new ColumnMetaData(); c.name = rs.getString("COLUMN_NAME"); c.label = c.name; c.type = rs.getString("TYPE_NAME"); c.jdbcType = rs.getInt("DATA_TYPE"); c.jdbcTypeName = rs.getString("TYPE_NAME"); c.length = rs.getInt("COLUMN_SIZE"); c.precision = c.length; c.scale = rs.getInt("DECIMAL_DIGITS"); c.nullable = "YES".equalsIgnoreCase(rs.getString("IS_NULLABLE")); c.ordinalPosition = rs.getInt("ORDINAL_POSITION"); c.defaultValue = rs.getString("COLUMN_DEF"); c.autoIncrement = "YES".equalsIgnoreCase(rs.getString("IS_AUTOINCREMENT")); c.logicalType = dialect.logicalType(c); dialect.loadColumnOptions(connection, catalog, schema, tableName, c); columns.put(c.name, c); } }
