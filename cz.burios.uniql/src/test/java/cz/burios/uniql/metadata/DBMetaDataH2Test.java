@@ -25,6 +25,14 @@ public class DBMetaDataH2Test {
 
             DBMetaData db = DBMetaData.load(connection);
             check("PUBLIC".equalsIgnoreCase(db.schema), "H2 schema must be detected");
+            TableMetaData targeted = DBMetaData.loadTable(connection, "qpx_metadata");
+            check(targeted != null, "targeted table metadata must be loaded");
+            check(targeted.primaryKeys().size() == 2, "targeted metadata must include composite primary key");
+            check(targeted.index("uk_qpx_metadata_name") != null, "targeted metadata must include secondary indexes");
+            TableMetaData targetedBySchema = DBMetaData.loadTable(connection, "PUBLIC", "qpx_metadata");
+            check(targetedBySchema != null, "schema-targeted metadata must be loaded");
+            TableMetaData missing = DBMetaData.loadTable(connection, "qpx_missing");
+            check(missing == null, "missing targeted table must return null");
             TableMetaData table = db.table("qpx_metadata");
             check(table != null, "table must be loaded");
             check("pk_qpx_metadata".equalsIgnoreCase(table.primaryKeyName), "primary-key name must be loaded");
