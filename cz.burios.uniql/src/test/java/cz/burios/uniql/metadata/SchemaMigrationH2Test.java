@@ -18,6 +18,7 @@ public class SchemaMigrationH2Test {
         test.migratesCompositePrimaryKeyFromActualJdbcMetadata();
         test.createsJPAIndexedTableFromEmptyDatabase();
         test.altersExistingColumnTypeNullabilityAndDefault();
+        test.updatesExistingJpaTableFromChangedDesiredMetadata();
         System.out.println("SchemaMigrationH2Test: OK");
     }
 
@@ -55,6 +56,86 @@ public class SchemaMigrationH2Test {
                 emf.close();
             }
         }
+    }
+
+    /** Verifies a second JPA-derived desired state can update an already migrated table. */
+    public void updatesExistingJpaTableFromChangedDesiredMetadata() throws Exception {
+        String url = "jdbc:h2:mem:uniql_schema_migration_jpa_update;DB_CLOSE_DELAY=-1";
+        try (Connection connection = DriverManager.getConnection(url, "sa", "")) {
+            EntityManagerFactory emf = Persistence.createEntityManagerFactory("uniql-test");
+            try {
+                TableMetaData jpaV1 = new JpaMetaDataReader().read(emf).table("qpx_jpa_index");
+                check(jpaV1 != null, "JPA V1 metadata must contain qpx_jpa_index");
+                DBMetaData v1 = new DBMetaData().add(jpaV1);
+
+                DBSchemaMigrator migrator = new DBSchemaMigrator(new H2Dialect());
+                SchemaDiff create = migrator.migrate(connection, v1);
+                check(!create.isEmpty(), "JPA V1 must create the missing table");
+                check(SchemaDiff.compare(DBMetaData.load(connection), v1).isEmpty(),
+                        "database must match JPA V1 after the initial migration");
+
+                // Simulate the next JPA model revision by changing only the desired metadata.
+                // The migration layer must plan the delta against the current database state.
+                TableMetaData jpaV2 = copyTable(jpaV1);
+                jpaV2.addColumn(new ColumnMetaData("description").string(200).nullable(true));
+                jpaV2.addIndex(new IndexMetaData("ix_qpx_jpa_index_description").column("description"));
+                DBMetaData v2 = new DBMetaData().add(jpaV2);
+
+                SchemaDiff update = migrator.plan(connection, v2);
+                check(update.size() == 2, "JPA V2 must add one column and one index: " + update.changes());
+                check(update.changes().get(0).type() == SchemaChange.Type.ADD_COLUMN,
+                        "JPA V2 column change must be planned as ADD_COLUMN");
+                check(update.changes().get(1).type() == SchemaChange.Type.CREATE_INDEX,
+                        "JPA V2 index change must be planned as CREATE_INDEX");
+
+                update.apply(connection, migrator.manager());
+
+                DBMetaData migrated = DBMetaData.load(connection);
+                check(SchemaDiff.compare(migrated, v2).isEmpty(),
+                        "database must match JPA V2 after the update migration: " + SchemaDiff.compare(migrated, v2));
+            } finally {
+                emf.close();
+            }
+        }
+    }
+
+    private static TableMetaData copyTable(TableMetaData source) {
+        TableMetaData result = new TableMetaData(source.name)
+                .database(source.database)
+                .schema(source.schema)
+                .label(source.label)
+                .primaryKeyName(source.primaryKeyName)
+                .params(source.params);
+        for (ColumnMetaData sourceColumn : source.columns) {
+            ColumnMetaData column = new ColumnMetaData(sourceColumn.name)
+                    .label(sourceColumn.label)
+                    .type(sourceColumn.type)
+                    .logicalType(sourceColumn.logicalType)
+                    .jdbcType(sourceColumn.jdbcType)
+                    .jdbcTypeName(sourceColumn.jdbcTypeName)
+                    .length(sourceColumn.length)
+                    .precision(sourceColumn.precision)
+                    .scale(sourceColumn.scale)
+                    .collation(sourceColumn.collation)
+                    .nullable(sourceColumn.nullable)
+                    .primaryKey(sourceColumn.primaryKey)
+                    .primaryKeyPosition(sourceColumn.primaryKeyPosition)
+                    .autoIncrement(sourceColumn.autoIncrement)
+                    .unique(sourceColumn.unique)
+                    .ordinalPosition(sourceColumn.ordinalPosition)
+                    .defaultValue(sourceColumn.defaultValue)
+                    .generation(sourceColumn.generation);
+            result.addColumn(column);
+        }
+        for (IndexMetaData sourceIndex : source.indexes) {
+            IndexMetaData index = new IndexMetaData(sourceIndex.name)
+                    .unique(sourceIndex.unique)
+                    .type(sourceIndex.type)
+                    .method(sourceIndex.method);
+            for (String column : sourceIndex.columns) index.column(column);
+            result.addIndex(index);
+        }
+        return result;
     }
 
     /** Verifies that H2 ALTER COLUMN applies type, nullability and default changes. */
