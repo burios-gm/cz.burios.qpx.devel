@@ -75,7 +75,7 @@ public class DBMetaData {
         String catalog = dialect.catalog(connection);
         String schema = dialect.schema(connection);
         TableMetaData result = null;
-        try (ResultSet tables = db.getTables(catalog, schema, tableName, new String[] {"TABLE"})) {
+        try (ResultSet tables = db.getTables(catalog, schema, "%", new String[] {"TABLE"})) {
             while (tables.next()) {
                 String physicalSchema = tables.getString("TABLE_SCHEM");
                 String physicalName = tables.getString("TABLE_NAME");
@@ -97,7 +97,7 @@ public class DBMetaData {
         DBDialect dialect = DBDialects.forConnection(connection);
         DatabaseMetaData db = connection.getMetaData();
         String catalog = dialect.catalog(connection);
-        try (ResultSet tables = db.getTables(catalog, schema, tableName, new String[] {"TABLE"})) {
+        try (ResultSet tables = db.getTables(catalog, schema, "%", new String[] {"TABLE"})) {
             while (tables.next()) {
                 String physicalSchema = tables.getString("TABLE_SCHEM");
                 String physicalName = tables.getString("TABLE_NAME");
