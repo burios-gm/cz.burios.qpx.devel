@@ -224,7 +224,7 @@ public class SchemaMigrationH2Test {
                 List<String> pkColumns = migratedTable.columns.stream()
                         .filter(c -> c.primaryKey)
                         .sorted(java.util.Comparator.comparingInt(c -> c.primaryKeyPosition))
-                        .map(c -> c.name)
+                        .map(c -> c.name.toLowerCase(java.util.Locale.ROOT))
                         .toList();
                 check(pkColumns.equals(List.of("tenant_code", "order_no")),
                         "migrated composite primary key has unexpected KEY_SEQ order: " + pkColumns);
