@@ -159,7 +159,7 @@ public class SchemaMigrationH2Test {
                     "changed column must produce ALTER_COLUMN");
 
             List<String> sql = diff.toSQL(new H2Dialect());
-            check(sql.size() == 1 && sql.get(0).contains("ALTER TABLE \"QPX_ALTER\" ALTER COLUMN \"NAME\""),
+            check(sql.size() == 1 && sql.get(0).contains("ALTER TABLE \"PUBLIC\".\"QPX_ALTER\" ALTER COLUMN \"NAME\""),
                     "H2 ALTER_COLUMN must render as one logical migration change: " + sql);
             check(sql.get(0).contains("VARCHAR(100)"),
                     "H2 ALTER_COLUMN must contain the desired type: " + sql);
