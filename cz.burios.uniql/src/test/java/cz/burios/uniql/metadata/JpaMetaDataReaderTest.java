@@ -104,6 +104,25 @@ public class JpaMetaDataReaderTest {
         private String id;
     }
 
+    /**
+     * Second JPA model version used by the real-database migration test.
+     * It deliberately changes NAME and adds NOTE so the test exercises
+     * ALTER_COLUMN and ADD_COLUMN from JPA-derived metadata.
+     */
+    @Entity(name = "StringIdEntityV2")
+    @Table(name = "qpx_jpa_mysql_test")
+    public static class StringIdEntityV2 {
+        @Id
+        @Column(name = "id", length = 20, nullable = false)
+        private String id;
+
+        @Column(name = "name", length = 40, nullable = true)
+        private String name;
+
+        @Column(name = "note", length = 64, nullable = true)
+        private String note;
+    }
+
     @Entity(name = "JpaIndexEntity")
     @Table(name = "qpx_jpa_index",
             indexes = @Index(name = "ix_qpx_code", columnList = "code"),
