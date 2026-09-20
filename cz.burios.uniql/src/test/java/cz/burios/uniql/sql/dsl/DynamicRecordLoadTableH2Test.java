@@ -62,6 +62,24 @@ public class DynamicRecordLoadTableH2Test {
             check(DSL.select(table).where(DSL.col("tenant").eq("cz")).list(connection, table).isEmpty(),
                     "deleted row must no longer be returned");
 
+            DBMetaData cached = DBMetaData.load(connection);
+            check(cached.table("qpx_runtime") != null, "database metadata must contain the runtime table");
+            check(cached.reloadTable(connection, "qpx_runtime") != null, "reloadTable must refresh existing metadata");
+            check(cached.table("qpx_runtime").column("amount") != null, "reloaded metadata must contain AMOUNT");
+
+            try (Statement s = connection.createStatement()) {
+                s.execute("ALTER TABLE qpx_runtime ADD COLUMN note VARCHAR(64)");
+            }
+            TableMetaData refreshed = cached.reloadTable(connection, "qpx_runtime");
+            check(refreshed != null && refreshed.column("note") != null,
+                    "reloadTable must expose columns added after the initial snapshot");
+
+            try (Statement s = connection.createStatement()) {
+                s.execute("DROP TABLE qpx_runtime");
+            }
+            check(cached.reloadTable(connection, "qpx_runtime") == null, "reloadTable must remove dropped tables");
+            check(cached.table("qpx_runtime") == null, "dropped table must be removed from metadata");
+
             System.out.println("DynamicRecordLoadTableH2Test: OK");
         }
     }
