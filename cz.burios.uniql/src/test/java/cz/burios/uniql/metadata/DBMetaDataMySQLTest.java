@@ -5,6 +5,9 @@ import java.sql.DriverManager;
 import java.sql.Statement;
 import java.util.Locale;
 
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.Persistence;
+
 import cz.burios.uniql.dialect.MySQLDialect;
 
 /**
@@ -198,6 +201,50 @@ public class DBMetaDataMySQLTest {
 
             System.out.println("DBMetaDataMySQLTest: OK");
             drop(connection);
+
+            migrateJpaMetadata(connection);
+        }
+    }
+
+    /**
+     * Exercises the complete JPA -> desired metadata -> SchemaDiff -> DDL ->
+     * JDBC metadata round-trip against the real MySQL database.
+     */
+    private static void migrateJpaMetadata(Connection connection) throws Exception {
+        final String tableName = "qpx_jpa_mysql_test";
+        try (EntityManagerFactory emf = Persistence.createEntityManagerFactory("uniql-test")) {
+            var entity = emf.getMetamodel().entity(JpaMetaDataReaderTest.StringIdEntity.class);
+            TableMetaData wantedTable = new JpaMetaDataReader().readTable(entity);
+            wantedTable.name(tableName);
+
+            DBMetaData desired = new DBMetaData().add(wantedTable);
+            DBMetaData actual = DBMetaData.load(connection);
+            SchemaDiff initial = SchemaDiff.compare(actual, desired);
+
+            check(initial.changes().stream().anyMatch(c -> c.type() == SchemaChange.Type.CREATE_TABLE),
+                    "JPA metadata must produce CREATE_TABLE for a missing MySQL table");
+            initial.apply(connection, new DBSchemaManager(new MySQLDialect()));
+
+            DBMetaData afterCreate = DBMetaData.load(connection);
+            TableMetaData actualTable = afterCreate.table(tableName);
+            check(actualTable != null, "JPA-derived table must exist after migration");
+            check(actualTable.column("id") != null, "JPA-derived id column must exist");
+            check(actualTable.column("id").logicalType == ColumnType.STRING,
+                    "JPA-derived id must remain STRING");
+            check(actualTable.column("id").length == 20,
+                    "JPA @Column(length=20) must become VARCHAR(20)");
+
+            SchemaDiff convergence = SchemaDiff.compare(afterCreate, desired);
+            check(convergence.isEmpty(),
+                    "JPA-derived MySQL schema must converge after CREATE_TABLE");
+
+            dropTable(connection, tableName);
+        }
+    }
+
+    private static void dropTable(Connection connection, String tableName) throws Exception {
+        try (Statement s = connection.createStatement()) {
+            s.executeUpdate("DROP TABLE IF EXISTS " + tableName);
         }
     }
 
