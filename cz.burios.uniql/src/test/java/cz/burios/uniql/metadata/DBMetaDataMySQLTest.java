@@ -213,13 +213,15 @@ public class DBMetaDataMySQLTest {
     private static void migrateJpaMetadata(Connection connection) throws Exception {
         final String tableName = "qpx_jpa_mysql_test";
         try (EntityManagerFactory emf = Persistence.createEntityManagerFactory("uniql-test")) {
-            var entity = emf.getMetamodel().entity(JpaMetaDataReaderTest.StringIdEntity.class);
-            TableMetaData wantedTable = new JpaMetaDataReader().readTable(entity);
-            wantedTable.name(tableName);
+            JpaMetaDataReader reader = new JpaMetaDataReader();
 
-            DBMetaData desired = new DBMetaData().add(wantedTable);
+            var entityV1 = emf.getMetamodel().entity(JpaMetaDataReaderTest.StringIdEntity.class);
+            TableMetaData wantedV1 = reader.readTable(entityV1);
+            wantedV1.name(tableName);
+            DBMetaData desiredV1 = new DBMetaData().add(wantedV1);
+
             DBMetaData actual = DBMetaData.load(connection);
-            SchemaDiff initial = SchemaDiff.compare(actual, desired);
+            SchemaDiff initial = SchemaDiff.compare(actual, desiredV1);
 
             check(initial.changes().stream().anyMatch(c -> c.type() == SchemaChange.Type.CREATE_TABLE),
                     "JPA metadata must produce CREATE_TABLE for a missing MySQL table");
@@ -233,10 +235,38 @@ public class DBMetaDataMySQLTest {
                     "JPA-derived id must remain STRING");
             check(actualTable.column("id").length == 20,
                     "JPA @Column(length=20) must become VARCHAR(20)");
-
-            SchemaDiff convergence = SchemaDiff.compare(afterCreate, desired);
-            check(convergence.isEmpty(),
+            check(SchemaDiff.compare(afterCreate, desiredV1).isEmpty(),
                     "JPA-derived MySQL schema must converge after CREATE_TABLE");
+
+            // Read a second JPA model version and migrate the existing table.
+            // V2 changes NAME from VARCHAR(20) NOT NULL to VARCHAR(40) NULL
+            // and adds NOTE VARCHAR(64) NULL.
+            var entityV2 = emf.getMetamodel().entity(JpaMetaDataReaderTest.StringIdEntityV2.class);
+            TableMetaData wantedV2 = reader.readTable(entityV2);
+            wantedV2.name(tableName);
+            DBMetaData desiredV2 = new DBMetaData().add(wantedV2);
+
+            SchemaDiff evolve = SchemaDiff.compare(afterCreate, desiredV2);
+            check(evolve.changes().stream().anyMatch(c -> c.type() == SchemaChange.Type.ALTER_COLUMN),
+                    "JPA V2 NAME change must produce ALTER_COLUMN");
+            check(evolve.changes().stream().anyMatch(c -> c.type() == SchemaChange.Type.ADD_COLUMN),
+                    "JPA V2 NOTE addition must produce ADD_COLUMN");
+            evolve.apply(connection, new DBSchemaManager(new MySQLDialect()));
+
+            DBMetaData afterEvolution = DBMetaData.load(connection);
+            TableMetaData evolved = afterEvolution.table(tableName);
+            check(evolved.column("name") != null, "JPA V2 NAME column must exist");
+            check(evolved.column("name").length == 40,
+                    "JPA V2 @Column(length=40) must become VARCHAR(40)");
+            check(evolved.column("name").nullable,
+                    "JPA V2 nullable=true must make NAME nullable");
+            check(evolved.column("note") != null, "JPA V2 NOTE column must be added");
+            check(evolved.column("note").length == 64,
+                    "JPA V2 @Column(length=64) must become VARCHAR(64)");
+            check(evolved.column("note").nullable,
+                    "JPA V2 NOTE must be nullable");
+            check(SchemaDiff.compare(afterEvolution, desiredV2).isEmpty(),
+                    "JPA V2 MySQL schema must converge after ALTER/ADD migration");
 
             dropTable(connection, tableName);
         }
