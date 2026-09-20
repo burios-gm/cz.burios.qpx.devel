@@ -96,11 +96,18 @@ public final class DSL {
     private static int updateDynamic(Connection c, DynamicRecord r)throws SQLException{
         TableMetaData meta=requireMetadata(r); validateColumns(meta,r);
         Update u=update(meta.qualifiedName()).where(primaryKeyWhere(meta,r));
+        boolean writable = false;
         for(Map.Entry<String,Object> e:r.entrySet()) {
+            ColumnMetaData column = meta.column(e.getKey());
             boolean pk=false;
             for(ColumnMetaData key:meta.primaryKeys()) if(key.name.equalsIgnoreCase(e.getKey())) { pk=true; break; }
-            if(!pk) u.set(e.getKey(),e.getValue());
+            boolean generated = column != null && (column.autoIncrement || column.generation != null && column.generation != cz.burios.uniql.metadata.ColumnGeneration.NONE);
+            if(!pk && !generated) {
+                u.set(column.name,e.getValue());
+                writable = true;
+            }
         }
+        if(!writable) throw new IllegalArgumentException("UPDATE contains no writable columns for "+meta.qualifiedName());
         return u.execute(c);
     }
     private static int deleteDynamic(Connection c, DynamicRecord r)throws SQLException{
