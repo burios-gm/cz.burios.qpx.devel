@@ -352,8 +352,9 @@ public final class SchemaDiff {
         if (desired.scale != 0 && actual.scale != desired.scale) return false;
         if (desired.collation != null && !desired.collation.isBlank() && !equalIgnoreCase(actual.collation, desired.collation)) return false;
         if (actual.nullable != desired.nullable) return false;
-        if (desired.autoIncrement && !actual.autoIncrement) return false;
-        if (desired.primaryKey && !actual.primaryKey) return false;
+        if (actual.autoIncrement != desired.autoIncrement) return false;
+        // Primary-key membership is compared as an ordered table-level constraint
+        // by diffPrimaryKey(). It must not cause a second ALTER_COLUMN change.
         if (desired.defaultValue != null && !equal(actual.defaultValue, desired.defaultValue)) return false;
         ColumnGeneration desiredGeneration = desired.generation == null ? ColumnGeneration.NONE : desired.generation;
         ColumnGeneration actualGeneration = actual.generation == null ? ColumnGeneration.NONE : actual.generation;
