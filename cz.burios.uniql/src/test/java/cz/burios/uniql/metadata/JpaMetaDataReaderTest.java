@@ -102,6 +102,9 @@ public class JpaMetaDataReaderTest {
         @Id
         @Column(name = "id", length = 20, nullable = false)
         private String id;
+
+        @Column(name = "name", length = 20, nullable = false)
+        private String name;
     }
 
     /**
