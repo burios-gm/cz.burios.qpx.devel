@@ -66,6 +66,19 @@ public class DBMetaData {
         }
         return result;
     }
+    /**
+     * Reloads one physical table into this metadata snapshot.
+     * Existing metadata for the same qualified table is replaced.
+     * A missing physical table removes it from the snapshot.
+     */
+    public TableMetaData reloadTable(Connection connection, String tableName) throws SQLException {
+        if (connection == null) throw new IllegalArgumentException("connection must not be null");
+        TableMetaData table = loadTable(connection, tableName);
+        if (table == null) remove(tableName);
+        else add(table);
+        return table;
+    }
+
     /** Loads metadata for one physical table without scanning the complete database catalog. */
     public static TableMetaData loadTable(Connection connection, String tableName) throws SQLException {
         if (connection == null) throw new IllegalArgumentException("connection must not be null");
