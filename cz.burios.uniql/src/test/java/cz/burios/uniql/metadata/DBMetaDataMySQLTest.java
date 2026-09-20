@@ -136,6 +136,41 @@ public class DBMetaDataMySQLTest {
             check(diff.isEmpty(), "normalized MySQL metadata must produce an empty diff: "
                     + diff.toSQL(new MySQLDialect()));
 
+            // Exercise the executable schema path as well: create a fresh table
+            // from portable metadata, reload it from MySQL, and require an empty
+            // diff afterwards.
+            drop(connection);
+            DBMetaData empty = DBMetaData.load(connection);
+            SchemaDiff createPlan = SchemaDiff.compare(empty, desired);
+            check(!createPlan.isEmpty(), "empty MySQL database must require table creation");
+            createPlan.apply(connection, new DBSchemaManager(new MySQLDialect()));
+
+            DBMetaData afterCreate = DBMetaData.load(connection);
+            SchemaDiff verifyCreate = SchemaDiff.compare(afterCreate, desired);
+            check(verifyCreate.isEmpty(), "created MySQL schema must converge to desired metadata: "
+                    + verifyCreate.toSQL(new MySQLDialect()));
+
+            // Then exercise a real ALTER COLUMN migration.
+            ColumnMetaData wantedName = wanted.column("NAME");
+            wantedName.length = 40;
+            SchemaDiff alterPlan = SchemaDiff.compare(afterCreate, desired);
+            check(!alterPlan.isEmpty(), "changing NAME length must produce ALTER_COLUMN");
+            check(alterPlan.changes().stream().anyMatch(change -> change.type() == SchemaChange.Type.ALTER_COLUMN),
+                    "changing NAME length must produce ALTER_COLUMN");
+            alterPlan.apply(connection, new DBSchemaManager(new MySQLDialect()));
+
+            DBMetaData afterAlter = DBMetaData.load(connection);
+            check(afterAlter.table(TABLE).column("NAME").length == 40,
+                    "ALTER_COLUMN must change NAME length in MySQL");
+            wantedName.length = 20;
+            SchemaDiff restorePlan = SchemaDiff.compare(afterAlter, desired);
+            check(!restorePlan.isEmpty(), "restoring NAME length must produce ALTER_COLUMN");
+            restorePlan.apply(connection, new DBSchemaManager(new MySQLDialect()));
+
+            DBMetaData finalMetadata = DBMetaData.load(connection);
+            check(SchemaDiff.compare(finalMetadata, desired).isEmpty(),
+                    "MySQL schema must converge after ALTER_COLUMN round-trip");
+
             System.out.println("DBMetaDataMySQLTest: OK");
             drop(connection);
         }
